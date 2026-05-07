@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Topbar from '../../components/layout/Topbar.jsx';
 import Icon from '../../components/ui/Icon.jsx';
+import PaymentMethodsManager from '../../components/events/PaymentMethodsManager.jsx';
 import { eventsService } from '../../services/events.service.js';
 import useToastStore from '../../stores/useToastStore.js';
 import { PageSpinner, Spinner } from '../../components/ui/Spinner.jsx';
@@ -39,6 +40,8 @@ export default function EditEventPage() {
           location: ev.venue || '',
           start_date: toDatetimeLocal(ev.start_date),
           end_date: toDatetimeLocal(ev.end_date),
+          attendee_registration_deadline: toDatetimeLocal(ev.attendee_registration_deadline),
+          volunteer_registration_deadline: toDatetimeLocal(ev.volunteer_registration_deadline),
           max_capacity: ev.max_volunteers || '',
           is_paid: !!ev.is_paid,
         });
@@ -84,7 +87,30 @@ export default function EditEventPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title || !form.start_date) { toast.error('Title and start date are required.'); return; }
+    if (!form.title || !form.start_date || !form.end_date) {
+      toast.error('Title, start date, and end date are required.');
+      return;
+    }
+    const start = new Date(form.start_date);
+    const end = new Date(form.end_date);
+    if (end <= start) {
+      toast.error('End date must be after start date.');
+      return;
+    }
+    if (form.attendee_registration_deadline) {
+      const ad = new Date(form.attendee_registration_deadline);
+      if (ad > start) {
+        toast.error('Ticket sales must close on or before the event starts.');
+        return;
+      }
+    }
+    if (form.volunteer_registration_deadline) {
+      const vd = new Date(form.volunteer_registration_deadline);
+      if (vd > end) {
+        toast.error('Volunteer application deadline must be on or before the event ends.');
+        return;
+      }
+    }
     setSaving(true);
     try {
       const payload = {
@@ -96,6 +122,8 @@ export default function EditEventPage() {
         endDate: form.end_date || form.start_date,
         isPaid: !!form.is_paid,
         maxVolunteers: form.max_capacity ? parseInt(form.max_capacity) : 0,
+        attendeeRegistrationDeadline: form.attendee_registration_deadline || undefined,
+        volunteerRegistrationDeadline: form.volunteer_registration_deadline || undefined,
       };
       await eventsService.updateEvent(id, payload);
       toast.success('Event updated.');
@@ -189,20 +217,106 @@ export default function EditEventPage() {
                   </select>
                 </div>
                 <div className="input-wrap">
-                  <label className="input-label" htmlFor="location">Location</label>
-                  <input id="location" name="location" className="input-field" value={form.location} onChange={handleChange} />
+                  <label className="input-label">Location</label>
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 8, padding: 3, background: 'var(--bg-input, rgba(15,23,42,0.5))', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-md)' }}>
+                    {[
+                      { value: 'in_person', label: 'In-person' },
+                      { value: 'online', label: 'Online' },
+                    ].map((opt) => {
+                      const active = (form.location_mode || (form.location?.match(/^https?:\/\//) ? 'online' : 'in_person')) === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, location_mode: opt.value, location: '' }))}
+                          style={{
+                            flex: 1,
+                            padding: '6px 12px',
+                            background: active ? 'var(--accent)' : 'transparent',
+                            color: active ? '#0a1628' : 'var(--text-muted)',
+                            border: 'none',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: 13,
+                            fontWeight: active ? 600 : 500,
+                            cursor: 'pointer',
+                            transition: 'all var(--transition-fast)',
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {(form.location_mode || (form.location?.match(/^https?:\/\//) ? 'online' : 'in_person')) === 'online' ? (
+                    <input
+                      id="location"
+                      name="location"
+                      type="url"
+                      className="input-field"
+                      placeholder="https://zoom.us/j/123…  or  https://meet.google.com/…"
+                      value={form.location}
+                      onChange={handleChange}
+                    />
+                  ) : (
+                    <input
+                      id="location"
+                      name="location"
+                      className="input-field"
+                      placeholder="Conference Hall A, Building 3"
+                      value={form.location}
+                      onChange={handleChange}
+                    />
+                  )}
                 </div>
                 <div className="input-wrap">
                   <label className="input-label" htmlFor="start_date">Start Date *</label>
                   <input id="start_date" name="start_date" type="datetime-local" className="input-field" value={form.start_date} onChange={handleChange} required />
                 </div>
                 <div className="input-wrap">
-                  <label className="input-label" htmlFor="end_date">End Date</label>
-                  <input id="end_date" name="end_date" type="datetime-local" className="input-field" value={form.end_date} onChange={handleChange} />
+                  <label className="input-label" htmlFor="end_date">End Date *</label>
+                  <input
+                    id="end_date" name="end_date"
+                    type="datetime-local"
+                    className="input-field"
+                    value={form.end_date}
+                    onChange={handleChange}
+                    min={form.start_date || undefined}
+                    required
+                  />
                 </div>
                 <div className="input-wrap">
                   <label className="input-label" htmlFor="max_capacity">Max Capacity</label>
                   <input id="max_capacity" name="max_capacity" type="number" min="1" className="input-field" value={form.max_capacity} onChange={handleChange} />
+                </div>
+                <div className="input-wrap">
+                  <label className="input-label" htmlFor="attendee_registration_deadline">Ticket Deadline</label>
+                  <input
+                    id="attendee_registration_deadline"
+                    name="attendee_registration_deadline"
+                    type="datetime-local"
+                    className="input-field"
+                    value={form.attendee_registration_deadline}
+                    onChange={handleChange}
+                    max={form.start_date || undefined}
+                  />
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                    Must be on or before the event starts.
+                  </div>
+                </div>
+                <div className="input-wrap">
+                  <label className="input-label" htmlFor="volunteer_registration_deadline">Volunteer Application Deadline</label>
+                  <input
+                    id="volunteer_registration_deadline"
+                    name="volunteer_registration_deadline"
+                    type="datetime-local"
+                    className="input-field"
+                    value={form.volunteer_registration_deadline}
+                    onChange={handleChange}
+                    max={form.end_date || undefined}
+                  />
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                    Can stay open until the event ends.
+                  </div>
                 </div>
                 <div className="input-wrap span-2">
                   <label className="input-label" htmlFor="description">Description</label>
@@ -217,9 +331,12 @@ export default function EditEventPage() {
                 <span style={{ fontSize: 14, color: 'var(--text-default)' }}>Paid event</span>
               </label>
               {form.is_paid && (
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 12px', background: 'rgba(34,211,238,0.06)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--accent)' }}>
-                  Set ticket type prices in the event's <strong>Manage → Tickets</strong> page.
-                </div>
+                <>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 12px', background: 'rgba(34,211,238,0.06)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--accent)', marginBottom: 16 }}>
+                    Set ticket type prices in the event's <strong>Manage → Tickets</strong> page.
+                  </div>
+                  <PaymentMethodsManager eventId={id} />
+                </>
               )}
             </div>
             <div style={{ display: 'flex', gap: 10 }}>

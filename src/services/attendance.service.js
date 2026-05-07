@@ -13,6 +13,9 @@ export const attendanceService = {
   checkInByQR: (qrData) =>
     api.post('/attendance/check-in/qr', { qrData }).then((r) => r.data),
 
+  checkInByShortCode: (eventId, shortCode) =>
+    api.post('/attendance/check-in/short-code', { eventId, shortCode }).then((r) => r.data),
+
   validateQR: (qrData) =>
     api.post('/attendance/validate-qr', { qrData }).then((r) => r.data),
 };

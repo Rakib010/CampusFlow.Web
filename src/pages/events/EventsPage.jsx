@@ -159,12 +159,18 @@ function EventCard({ event: ev, onClick }) {
               <span>{new Date(ev.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             </div>
           )}
-          {(ev.venue || ev.location) && (
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 6, alignItems: 'center' }}>
-              <Icon name="mapPin" size={13} />
-              <span>{ev.venue || ev.location}</span>
-            </div>
-          )}
+          {(ev.venue || ev.location) && (() => {
+            const v = ev.venue || ev.location;
+            const online = /^https?:\/\//i.test(v);
+            return (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 6, alignItems: 'center' }}>
+                <Icon name={online ? 'spark' : 'mapPin'} size={13} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {online ? 'Online' : v}
+                </span>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

@@ -21,7 +21,6 @@ import EventDetailPage from './pages/events/EventDetailPage.jsx';
 import CreateEventPage from './pages/events/CreateEventPage.jsx';
 import EditEventPage from './pages/events/EditEventPage.jsx';
 import ProfilePage from './pages/profile/ProfilePage.jsx';
-import NotificationsPage from './pages/notifications/NotificationsPage.jsx';
 import MyApplicationsPage from './pages/volunteers/MyApplicationsPage.jsx';
 import MyTicketsPage from './pages/tickets/MyTicketsPage.jsx';
 import EventManagePage from './pages/events/EventManagePage.jsx';
@@ -58,7 +57,6 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/events" element={<EventsPage />} />
 
             {/* Specific event sub-routes must come before :id */}

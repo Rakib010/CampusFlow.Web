@@ -4,6 +4,9 @@ export const dashboardService = {
   adminDashboard: () =>
     api.get('/dashboard/admin').then((r) => r.data),
 
+  superAdminDashboard: () =>
+    api.get('/dashboard/super-admin').then((r) => r.data),
+
   organizerDashboard: () =>
     api.get('/dashboard/organizer').then((r) => r.data),
 

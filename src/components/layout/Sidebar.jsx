@@ -24,7 +24,6 @@ const navConfig = {
     {
       section: 'Platform',
       items: [
-        { to: '/notifications', icon: 'bell', label: 'Notifications', notif: true },
         { to: '/profile', icon: 'user', label: 'My Profile' },
       ],
     },
@@ -46,7 +45,6 @@ const navConfig = {
     {
       section: 'Platform',
       items: [
-        { to: '/notifications', icon: 'bell', label: 'Notifications', notif: true },
         { to: '/profile', icon: 'user', label: 'My Profile' },
       ],
     },
@@ -69,7 +67,6 @@ const navConfig = {
     {
       section: 'Tools',
       items: [
-        { to: '/notifications', icon: 'bell', label: 'Notifications', notif: true },
         { to: '/profile', icon: 'user', label: 'My Profile' },
       ],
     },
@@ -93,7 +90,6 @@ const navConfig = {
     {
       section: 'Account',
       items: [
-        { to: '/notifications', icon: 'bell', label: 'Notifications', notif: true },
         { to: '/profile', icon: 'user', label: 'My Profile' },
       ],
     },
@@ -116,7 +112,6 @@ const navConfig = {
     {
       section: 'Account',
       items: [
-        { to: '/notifications', icon: 'bell', label: 'Notifications', notif: true },
         { to: '/profile', icon: 'user', label: 'My Profile' },
       ],
     },
@@ -153,7 +148,7 @@ export default function Sidebar() {
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.to === '/dashboard'}
+                end={item.to === '/dashboard' || item.to === '/events'}
                 className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
               >
                 <span className="sidebar-item-icon"><Icon name={item.icon} size={17} /></span>

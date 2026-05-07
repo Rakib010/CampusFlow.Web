@@ -4,8 +4,10 @@ import Topbar from '../../components/layout/Topbar.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import { PageSpinner } from '../../components/ui/Spinner.jsx';
 import { volunteersService } from '../../services/volunteers.service.js';
+import { feedbackService } from '../../services/feedback.service.js';
 import useToastStore from '../../stores/useToastStore.js';
 import Icon from '../../components/ui/Icon.jsx';
+import RatingModal from '../../components/ui/RatingModal.jsx';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -17,6 +19,7 @@ const statusColor = { approved: 'green', rejected: 'red', pending: 'amber' };
 export default function MyApplicationsPage() {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [rating, setRating] = useState(null); // { eventId, eventTitle, organizerId, organizerName }
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -81,20 +84,46 @@ export default function MyApplicationsPage() {
                       {fmtDate(app.applied_at || app.created_at)}
                     </td>
                     <td>
-                      {app.event_id && (
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => navigate(`/events/${app.event_id}`)}
-                        >
-                          View Event
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {/* Rate Organizer — approved volunteers can rate after the event completes */}
+                        {app.status === 'approved' && app.event_status === 'completed' && app.organizer_id && (
+                          <button
+                            className="btn btn-success btn-sm"
+                            onClick={() => setRating({
+                              eventId: app.event_id,
+                              eventTitle: app.event_title,
+                              organizerId: app.organizer_id,
+                              organizerName: app.organizer_name,
+                            })}
+                          >
+                            <Icon name="star" size={13} /> Rate Organizer
+                          </button>
+                        )}
+                        {app.event_id && (
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => navigate(`/events/${app.event_id}`)}
+                          >
+                            View Event
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+        )}
+
+        {rating && (
+          <RatingModal
+            title={`Rate ${rating.organizerName || 'the organizer'}`}
+            subtitle={`How was your experience volunteering for "${rating.eventTitle}"?`}
+            onClose={() => setRating(null)}
+            onSubmit={(payload) => feedbackService.rateOrganizer(rating.eventId, rating.organizerId, payload)}
+            submitLabel="Submit Rating"
+          />
         )}
       </div>
     </>

@@ -3,12 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Topbar from '../../components/layout/Topbar.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Icon from '../../components/ui/Icon.jsx';
+import Countdown from '../../components/ui/Countdown.jsx';
 import { PageSpinner } from '../../components/ui/Spinner.jsx';
 import { ConfirmModal } from '../../components/ui/Modal.jsx';
 import { eventsService } from '../../services/events.service.js';
 import { usersService } from '../../services/users.service.js';
 import { volunteersService } from '../../services/volunteers.service.js';
 import { ticketsService } from '../../services/tickets.service.js';
+import { paymentMethodsService, PAYMENT_METHOD_TYPES } from '../../services/paymentMethods.service.js';
+import { feedbackService } from '../../services/feedback.service.js';
+import StarRating from '../../components/ui/StarRating.jsx';
 import useAuthStore from '../../stores/useAuthStore.js';
 import useToastStore from '../../stores/useToastStore.js';
 
@@ -82,13 +86,32 @@ export default function EventDetailPage() {
   const [buyingTypeId, setBuyingTypeId] = useState(null);
   const [paymentType, setPaymentType] = useState('cash');
   const [showBuyModal, setShowBuyModal] = useState(null); // holds the selected ticket type
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentReference, setPaymentReference] = useState('');
+
+  // Event-level feedback (visible when completed)
+  const [eventFeedback, setEventFeedback] = useState(null); // { average, count, comments: [...] }
   const { user } = useAuthStore();
   const toast = useToastStore();
   const navigate = useNavigate();
 
   useEffect(() => {
     eventsService.getEvent(id)
-      .then((r) => setEvent(r.data))
+      .then((r) => {
+        setEvent(r.data);
+        // Once we know it's completed, fetch event feedback
+        if (r.data?.status === 'completed') {
+          feedbackService.getEventFeedback(id).then((fb) => {
+            const list = Array.isArray(fb.data) ? fb.data : fb.data?.feedback || [];
+            if (list.length > 0) {
+              const avg = list.reduce((acc, x) => acc + (x.rating || x.score || 0), 0) / list.length;
+              setEventFeedback({ average: avg, count: list.length, list });
+            } else {
+              setEventFeedback({ average: 0, count: 0, list: [] });
+            }
+          }).catch(() => { /* ignore */ });
+        }
+      })
       .catch(() => { toast.error('Event not found.'); navigate('/events'); })
       .finally(() => setLoading(false));
   }, [id, navigate, toast]);
@@ -111,13 +134,14 @@ export default function EventDetailPage() {
     });
   }, [id, user?.role]);
 
-  // Load ticket types + existing ticket (attendee only)
+  // Load ticket types + existing ticket + payment methods (attendee only)
   useEffect(() => {
     if (user?.role !== 'ATTENDEE') return;
     Promise.allSettled([
       ticketsService.getTicketTypes(id),
       ticketsService.getMyTickets(),
-    ]).then(([typesRes, ticketsRes]) => {
+      paymentMethodsService.list(id),
+    ]).then(([typesRes, ticketsRes, methodsRes]) => {
       if (typesRes.status === 'fulfilled') {
         setTicketTypes(typesRes.value.data || []);
       }
@@ -125,6 +149,9 @@ export default function EventDetailPage() {
         const all = ticketsRes.value.data || [];
         const existing = all.find((t) => t.event_id === id);
         if (existing) setMyTicket(existing);
+      }
+      if (methodsRes.status === 'fulfilled') {
+        setPaymentMethods(methodsRes.value.data || []);
       }
     });
   }, [id, user?.role]);
@@ -153,19 +180,25 @@ export default function EventDetailPage() {
 
   const handleBuyTicket = async () => {
     if (!showBuyModal) return;
+    if (paymentType === 'online' && !paymentReference.trim()) {
+      toast.error('Please enter your transaction ID after sending the payment.');
+      return;
+    }
     setBuyingTypeId(showBuyModal.id);
     try {
       const res = await ticketsService.purchaseTicket({
         ticketTypeId: showBuyModal.id,
         paymentType,
+        paymentReference: paymentType === 'online' ? paymentReference.trim() : undefined,
       });
-      setMyTicket(res.data || { event_id: id, payment_status: paymentType === 'online' ? 'confirmed' : 'pending' });
+      setMyTicket(res.data || { event_id: id, payment_status: 'pending' });
       toast.success(
         paymentType === 'cash'
           ? 'Ticket reserved! Pay at the venue — the organizer will confirm your payment.'
-          : 'Ticket purchased! Check My Tickets for your QR code.'
+          : 'Ticket reserved! The organizer will verify your transaction and confirm.'
       );
       setShowBuyModal(null);
+      setPaymentReference('');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to purchase ticket.');
     } finally {
@@ -245,7 +278,9 @@ export default function EventDetailPage() {
   const startDate = fmtDate(event.start_date);
   const startTime = fmtTime(event.start_date);
   const endDate = fmtDate(event.end_date);
-  const venue = event.venue || event.location || 'Not specified';
+  const venueRaw = event.venue || event.location || '';
+  const isOnline = /^https?:\/\//i.test(venueRaw);
+  const venue = venueRaw || 'Not specified';
   const capacity = event.max_volunteers ? `${event.max_volunteers} spots` : 'Unlimited';
 
   return (
@@ -271,19 +306,52 @@ export default function EventDetailPage() {
             background: 'linear-gradient(135deg, rgba(34,211,238,0.04) 0%, rgba(8,145,178,0.02) 100%)',
             borderColor: 'rgba(34,211,238,0.2)',
           }}>
-            {/* Banner */}
+            {/* Banner with main countdown overlay */}
             {event.banner_url ? (
               <div style={{
                 height: 220,
                 background: `linear-gradient(180deg, transparent 0%, rgba(10,22,40,0.85) 100%), url(${event.banner_url}) center/cover no-repeat`,
                 position: 'relative',
-              }} />
+              }}>
+                {/* Main event countdown — overlaid bottom-right (only when active) */}
+                {(event.status === 'published' || event.status === 'ongoing') && (
+                  <div style={{
+                    position: 'absolute',
+                    right: 20,
+                    bottom: 20,
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    background: 'rgba(10,22,40,0.55)',
+                    borderRadius: 'var(--radius-lg)',
+                    padding: 4,
+                  }}>
+                    <Countdown
+                      target={event.status === 'ongoing' ? event.end_date : event.start_date}
+                      variant={event.status === 'ongoing' ? 'ends' : 'starts'}
+                      label={event.status === 'ongoing' ? 'Ends in' : 'Starts in'}
+                      size="md"
+                    />
+                  </div>
+                )}
+              </div>
             ) : (
               <div style={{
-                height: 80,
+                height: 100,
                 background: 'linear-gradient(135deg, rgba(34,211,238,0.15) 0%, rgba(8,145,178,0.08) 100%)',
                 borderBottom: '1px solid var(--border-subtle)',
-              }} />
+                position: 'relative',
+              }}>
+                {(event.status === 'published' || event.status === 'ongoing') && (
+                  <div style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)' }}>
+                    <Countdown
+                      target={event.status === 'ongoing' ? event.end_date : event.start_date}
+                      variant={event.status === 'ongoing' ? 'ends' : 'starts'}
+                      label={event.status === 'ongoing' ? 'Ends in' : 'Starts in'}
+                      size="sm"
+                    />
+                  </div>
+                )}
+              </div>
             )}
 
             <div style={{ padding: '24px 28px' }}>
@@ -291,7 +359,10 @@ export default function EventDetailPage() {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-                    <Badge label={event.status} color={STATUS_COLOR[event.status] || 'slate'} />
+                    {/* Status hidden when 'published' (it's the normal state and would just be noise) */}
+                    {event.status && event.status !== 'published' && (
+                      <Badge label={event.status} color={STATUS_COLOR[event.status] || 'slate'} />
+                    )}
                     {event.category && <Badge label={event.category} color="purple" />}
                     {event.is_paid && <Badge label="Paid" color="amber" />}
                   </div>
@@ -354,7 +425,21 @@ export default function EventDetailPage() {
               color="cyan"
             />
             <MetaCard icon="clock" label="Start Time" value={startTime || '—'} color="amber" />
-            <MetaCard icon="mapPin" label="Venue" value={venue} color="purple" />
+            <MetaCard
+              icon={isOnline ? 'spark' : 'mapPin'}
+              label={isOnline ? 'Online Event' : 'Venue'}
+              value={isOnline ? (
+                <a
+                  href={venueRaw}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--cyan-400)', textDecoration: 'underline', textDecorationColor: 'rgba(34,211,238,0.4)' }}
+                >
+                  Join meeting →
+                </a>
+              ) : venue}
+              color="purple"
+            />
             <MetaCard icon="users" label="Volunteer Spots" value={capacity} color="green" />
           </div>
 
@@ -372,11 +457,19 @@ export default function EventDetailPage() {
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {[
                   ['Category', event.category],
-                  ['Venue', venue],
+                  [isOnline ? 'Meeting link' : 'Venue', isOnline ? (
+                    <a key="v" href={venueRaw} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--cyan-400)', wordBreak: 'break-all' }}>{venueRaw}</a>
+                  ) : venue],
                   ['Starts', `${startDate}${startTime ? ' · ' + startTime : ''}`],
                   ['Ends', endDate],
                   ['Volunteer Spots', capacity],
                   ['Ticketing', event.is_paid ? 'Paid event — ticket types in Manage' : 'Free entry'],
+                  ['Ticket sales close', event.attendee_registration_deadline
+                    ? `${fmtDate(event.attendee_registration_deadline)} · ${fmtTime(event.attendee_registration_deadline)}`
+                    : 'Same as event start'],
+                  ['Volunteer applications close', event.volunteer_registration_deadline
+                    ? `${fmtDate(event.volunteer_registration_deadline)} · ${fmtTime(event.volunteer_registration_deadline)}`
+                    : 'Same as event start'],
                   ['Status', <Badge key="s" label={event.status} color={STATUS_COLOR[event.status] || 'slate'} />],
                   ['Created', fmtDate(event.created_at)],
                 ].map(([label, value]) => (
@@ -394,6 +487,43 @@ export default function EventDetailPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Event ratings — only after the event completes */}
+              {eventFeedback && eventFeedback.count > 0 && (
+                <div className="card" style={{ marginTop: 16, borderColor: 'rgba(245,158,11,0.25)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Icon name="star" size={18} color="var(--amber-400)" />
+                      <div>
+                        <div className="card-title" style={{ margin: 0 }}>Attendee Feedback</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                          Average rating from {eventFeedback.count} {eventFeedback.count === 1 ? 'review' : 'reviews'}
+                        </div>
+                      </div>
+                    </div>
+                    <StarRating value={eventFeedback.average} count={eventFeedback.count} size={18} />
+                  </div>
+
+                  {/* Recent comments */}
+                  {eventFeedback.list.filter((x) => x.comment).slice(0, 5).length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {eventFeedback.list.filter((x) => x.comment).slice(0, 5).map((fb, i) => (
+                        <div key={fb.id || i} style={{ padding: '10px 14px', background: 'rgba(34,211,238,0.04)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                              {fb.full_name || fb.user_name || 'Anonymous'}
+                            </div>
+                            <StarRating value={fb.rating || fb.score || 0} size={11} showValue={false} />
+                          </div>
+                          <div style={{ fontSize: 13, color: 'var(--text-default)', fontStyle: 'italic', lineHeight: 1.5 }}>
+                            "{fb.comment}"
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Right sidebar */}
@@ -406,6 +536,19 @@ export default function EventDetailPage() {
                     <Icon name="users" size={16} color="var(--accent)" />
                     <div className="card-title" style={{ margin: 0 }}>Volunteer</div>
                   </div>
+
+                  {/* Application deadline countdown — inline, contextual */}
+                  {!myApplication && event.volunteer_registration_deadline && (event.status === 'published' || event.status === 'ongoing') && (
+                    <div style={{ marginBottom: 14 }}>
+                      <Countdown
+                        target={event.volunteer_registration_deadline}
+                        variant="deadline"
+                        label="Applications close in"
+                        expiredLabel="Applications closed"
+                        size="sm"
+                      />
+                    </div>
+                  )}
 
                   {myApplication ? (
                     // Already applied — show status
@@ -434,6 +577,10 @@ export default function EventDetailPage() {
                   ) : event.status === 'cancelled' || event.status === 'completed' ? (
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                       This event is no longer accepting volunteers.
+                    </div>
+                  ) : event.volunteer_registration_deadline && new Date(event.volunteer_registration_deadline) < new Date() ? (
+                    <div style={{ fontSize: 13, color: 'var(--red-400)' }}>
+                      Volunteer applications closed on {new Date(event.volunteer_registration_deadline).toLocaleString()}.
                     </div>
                   ) : needs.length === 0 ? (
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
@@ -497,6 +644,19 @@ export default function EventDetailPage() {
                     <div className="card-title" style={{ margin: 0 }}>Attend This Event</div>
                   </div>
 
+                  {/* Ticket deadline countdown — inline, contextual */}
+                  {!myTicket && event.is_paid && event.attendee_registration_deadline && (event.status === 'published' || event.status === 'ongoing') && (
+                    <div style={{ marginBottom: 14 }}>
+                      <Countdown
+                        target={event.attendee_registration_deadline}
+                        variant="deadline"
+                        label="Sales close in"
+                        expiredLabel="Sales closed"
+                        size="sm"
+                      />
+                    </div>
+                  )}
+
                   {myTicket ? (
                     <div>
                       <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>You have a ticket:</div>
@@ -525,6 +685,10 @@ export default function EventDetailPage() {
                   ) : event.status === 'cancelled' || event.status === 'completed' ? (
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                       This event is no longer accepting registrations.
+                    </div>
+                  ) : event.attendee_registration_deadline && new Date(event.attendee_registration_deadline) < new Date() ? (
+                    <div style={{ fontSize: 13, color: 'var(--red-400)' }}>
+                      Ticket sales closed on {new Date(event.attendee_registration_deadline).toLocaleString()}.
                     </div>
                   ) : !event.is_paid ? (
                     <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
@@ -693,7 +857,14 @@ export default function EventDetailPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {[
                       { value: 'cash', label: 'Cash at venue', desc: 'Reserve now, pay the organizer at the event' },
-                      { value: 'online', label: 'Online (instant)', desc: 'Confirmed immediately' },
+                      {
+                        value: 'online',
+                        label: 'Online transfer',
+                        desc: paymentMethods.length > 0
+                          ? `Send via ${paymentMethods.map((m) => (PAYMENT_METHOD_TYPES.find(t => t.value === m.method_type)?.label || m.method_type)).join(' / ')}, then enter the TrxID`
+                          : 'Organizer hasn\'t added online payment methods yet',
+                        disabled: paymentMethods.length === 0,
+                      },
                     ].map((opt) => (
                       <label
                         key={opt.value}
@@ -703,7 +874,8 @@ export default function EventDetailPage() {
                           border: `1px solid ${paymentType === opt.value ? 'var(--accent)' : 'var(--border-soft)'}`,
                           borderRadius: 'var(--radius-md)',
                           background: paymentType === opt.value ? 'rgba(34,211,238,0.06)' : 'transparent',
-                          cursor: 'pointer',
+                          cursor: opt.disabled ? 'not-allowed' : 'pointer',
+                          opacity: opt.disabled ? 0.5 : 1,
                           transition: 'all var(--transition-fast)',
                         }}
                       >
@@ -713,6 +885,7 @@ export default function EventDetailPage() {
                           value={opt.value}
                           checked={paymentType === opt.value}
                           onChange={(e) => setPaymentType(e.target.value)}
+                          disabled={opt.disabled}
                           style={{ marginTop: 2, accentColor: 'var(--accent)' }}
                         />
                         <div>
@@ -724,10 +897,85 @@ export default function EventDetailPage() {
                   </div>
                 </div>
 
+                {/* Online payment instructions */}
+                {paymentType === 'online' && paymentMethods.length > 0 && (
+                  <div style={{
+                    padding: 14,
+                    background: 'rgba(34,211,238,0.06)',
+                    border: '1px solid rgba(34,211,238,0.25)',
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: 18,
+                  }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                      Step 1 · Send {Number(showBuyModal.price).toFixed(2)} ৳ to one of these accounts:
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {paymentMethods.map((m) => {
+                        const meta = PAYMENT_METHOD_TYPES.find((t) => t.value === m.method_type);
+                        return (
+                          <div key={m.id} style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: '10px 12px',
+                            background: 'var(--bg-surface)',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border-subtle)',
+                          }}>
+                            <span style={{
+                              background: meta?.color || '#64748b',
+                              color: 'white', fontSize: 10, fontWeight: 600,
+                              padding: '3px 8px', borderRadius: 4,
+                              textTransform: 'uppercase', letterSpacing: '0.04em',
+                              flexShrink: 0,
+                            }}>{meta?.label || m.method_type}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace', userSelect: 'all' }}>
+                                {m.account_number}
+                                {m.account_label && <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12, fontFamily: 'inherit', marginLeft: 6 }}>· {m.account_label}</span>}
+                              </div>
+                              {m.account_name && (
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{m.account_name}</div>
+                              )}
+                              {m.instructions && (
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 2 }}>{m.instructions}</div>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => {
+                                navigator.clipboard?.writeText(m.account_number);
+                                toast.success('Copied');
+                              }}
+                              title="Copy"
+                              style={{ padding: 4 }}
+                            >
+                              <Icon name="clipboard" size={13} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '14px 0 6px' }}>
+                      Step 2 · Enter your transaction ID
+                    </div>
+                    <input
+                      className="input-field"
+                      placeholder="e.g. 8AB12CD34E"
+                      value={paymentReference}
+                      onChange={(e) => setPaymentReference(e.target.value)}
+                      style={{ fontFamily: 'monospace', textTransform: 'uppercase' }}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
+                      Your ticket stays <strong>pending</strong> until the organizer verifies your TrxID. They'll confirm and your QR code becomes valid.
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setShowBuyModal(null)} disabled={!!buyingTypeId}>Cancel</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setShowBuyModal(null); setPaymentReference(''); }} disabled={!!buyingTypeId}>Cancel</button>
                   <button className="btn btn-primary btn-sm" onClick={handleBuyTicket} disabled={!!buyingTypeId}>
-                    {buyingTypeId ? 'Processing…' : `Confirm — ${Number(showBuyModal.price).toFixed(2)} ৳`}
+                    {buyingTypeId ? 'Processing…' : `Reserve — ${Number(showBuyModal.price).toFixed(2)} ৳`}
                   </button>
                 </div>
               </div>

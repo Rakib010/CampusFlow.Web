@@ -29,4 +29,7 @@ export const usersService = {
 
   deleteUser: (id) =>
     api.delete(`/users/${id}`).then((r) => r.data),
+
+  changeRole: (id, role) =>
+    api.patch(`/users/${id}/role`, { role }).then((r) => r.data),
 };

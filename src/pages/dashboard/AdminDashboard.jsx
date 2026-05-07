@@ -7,6 +7,7 @@ import { PageSpinner } from '../../components/ui/Spinner.jsx';
 import { dashboardService } from '../../services/dashboard.service.js';
 import useAuthStore from '../../stores/useAuthStore.js';
 import Icon from '../../components/ui/Icon.jsx';
+import { ChartCard, PieBreakdown, BarSeries, AreaTrend, CHART_COLORS } from '../../components/ui/Charts.jsx';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -15,17 +16,22 @@ function fmtDate(d) {
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
+  const [superData, setSuperData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   useEffect(() => {
-    dashboardService.adminDashboard()
-      .then((r) => setData(r.data))
-      .catch((e) => setError(e.response?.data?.message || 'Failed to load dashboard'))
-      .finally(() => setLoading(false));
-  }, []);
+    const calls = [dashboardService.adminDashboard()];
+    if (isSuperAdmin) calls.push(dashboardService.superAdminDashboard());
+    Promise.allSettled(calls).then(([adminRes, superRes]) => {
+      if (adminRes.status === 'fulfilled') setData(adminRes.value.data);
+      else setError(adminRes.reason?.response?.data?.message || 'Failed to load dashboard');
+      if (superRes?.status === 'fulfilled') setSuperData(superRes.value.data);
+    }).finally(() => setLoading(false));
+  }, [isSuperAdmin]);
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -96,25 +102,107 @@ export default function AdminDashboard() {
               />
             </div>
 
-            {/* Active events breakdown */}
-            {data.events && (
-              <div className="stats-grid" style={{ marginBottom: 24 }}>
-                {[
-                  { key: 'published', label: 'Published', color: 'green' },
-                  { key: 'ongoing', label: 'Ongoing', color: 'cyan' },
-                  { key: 'completed', label: 'Completed', color: 'slate' },
-                  { key: 'draft', label: 'Drafts', color: 'amber' },
-                  { key: 'cancelled', label: 'Cancelled', color: 'red' },
-                ].map(({ key, label, color }) => (
-                  <div key={key} className="card card-sm" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ fontWeight: 700, fontSize: 22, color: 'var(--text-primary)' }}>
-                      {Number(data.events[key] ?? 0)}
+            {/* Super Admin: system-wide metrics (only visible to SUPER_ADMIN) */}
+            {isSuperAdmin && superData && (
+              <div className="card" style={{ marginBottom: 24, borderColor: 'rgba(168,85,247,0.3)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <Icon name="shield" size={18} color="var(--purple-400)" />
+                  <div className="card-title" style={{ margin: 0, color: 'var(--purple-400)' }}>System Metrics</div>
+                </div>
+                <div className="card-subtitle" style={{ marginBottom: 18 }}>
+                  Platform-wide stats only super admins can see
+                </div>
+
+                <div className="stats-grid" style={{ marginBottom: 18 }}>
+                  <StatCard icon={<Icon name="users" size={22} />}     label="Active Users"        value={superData.active_users}                                          color="cyan" />
+                  <StatCard icon={<Icon name="spark" size={22} />}      label="Signups (30d)"       value={superData.signups_30d}                                           color="green" />
+                  <StatCard icon={<Icon name="trophy" size={22} />}     label="Revenue (30d)"       value={`${Number(superData.revenue_30d).toFixed(2)} ৳`}                  color="amber" />
+                  <StatCard icon={<Icon name="checkCircle" size={22} />} label="Attendance Rate"    value={`${superData.attendance_rate}%`} sub={`${superData.checked_in_tickets} of ${superData.confirmed_tickets} tickets`} color="green" />
+                  <StatCard icon={<Icon name="shield" size={22} />}     label="Admins"              value={`${superData.admin_count} + ${superData.super_admin_count} super`} color="purple" />
+                </div>
+
+                {/* Top organizers */}
+                {superData.top_organizers?.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, marginBottom: 10 }}>
+                      Top Organizers · by event count
                     </div>
-                    <Badge label={key} color={color} />
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>#</th><th>Organizer</th><th>Email</th><th style={{ textAlign: 'right' }}>Events</th></tr>
+                        </thead>
+                        <tbody>
+                          {superData.top_organizers.map((o, i) => (
+                            <tr key={o.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/users/${o.id}`)}>
+                              <td style={{ width: 30, color: 'var(--text-muted)' }}>{i + 1}</td>
+                              <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{o.full_name || '—'}</td>
+                              <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{o.email}</td>
+                              <td style={{ textAlign: 'right' }}>
+                                <Badge label={`${o.event_count}`} color="cyan" />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                ))}
+                )}
+
               </div>
             )}
+
+            {/* Charts grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 24 }}>
+              {/* Event status pie */}
+              {data.events && (() => {
+                const eventsPie = [
+                  { name: 'Published', value: parseInt(data.events.published) || 0 },
+                  { name: 'Ongoing',   value: parseInt(data.events.ongoing) || 0 },
+                  { name: 'Completed', value: parseInt(data.events.completed) || 0 },
+                  { name: 'Draft',     value: parseInt(data.events.draft) || 0 },
+                  { name: 'Cancelled', value: parseInt(data.events.cancelled) || 0 },
+                ].filter((s) => s.value > 0);
+                return (
+                  <ChartCard title="Event Status" subtitle="Across the platform" empty={eventsPie.length === 0 ? 'No events yet' : null}>
+                    <PieBreakdown
+                      data={eventsPie}
+                      colors={[CHART_COLORS.green, CHART_COLORS.cyan, CHART_COLORS.slate, CHART_COLORS.amber, CHART_COLORS.red]}
+                    />
+                  </ChartCard>
+                );
+              })()}
+
+              {/* User role distribution */}
+              {data.users && (() => {
+                const usersPie = [
+                  { name: 'Volunteers', value: parseInt(data.users.volunteers) || 0 },
+                  { name: 'Organizers', value: parseInt(data.users.organizers) || 0 },
+                  { name: 'Attendees',  value: parseInt(data.users.attendees) || 0 },
+                ].filter((s) => s.value > 0);
+                return (
+                  <ChartCard title="User Distribution" subtitle="By role" empty={usersPie.length === 0 ? 'No users yet' : null}>
+                    <PieBreakdown
+                      data={usersPie}
+                      colors={[CHART_COLORS.green, CHART_COLORS.cyan, CHART_COLORS.amber]}
+                    />
+                  </ChartCard>
+                );
+              })()}
+
+              {/* Super admin: weekly growth bar chart */}
+              {isSuperAdmin && superData?.growth_weekly?.length > 0 && (() => {
+                const weekly = superData.growth_weekly.map((g) => ({
+                  week: new Date(g.week).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+                  signups: g.count,
+                }));
+                return (
+                  <ChartCard title="User Growth" subtitle="New signups · last 8 weeks">
+                    <AreaTrend data={weekly} xKey="week" yKey="signups" color={CHART_COLORS.purple} valueLabel="Signups" />
+                  </ChartCard>
+                );
+              })()}
+            </div>
 
             {/* Recent Events */}
             {data.recentEvents?.length > 0 ? (

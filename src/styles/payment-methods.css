@@ -1,0 +1,117 @@
+/*  CampusFlow — Payment methods manager styles */
+
+.pm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.pm-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pm-desc {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(71, 85, 105, 0.95);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.pm-loading {
+  padding: 14px;
+  text-align: center;
+}
+
+.pm-empty {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px dashed rgba(139, 92, 246, 0.22);
+  border-radius: var(--radius-md);
+}
+
+.pm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pm-item {
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.pm-type-pill {
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.08);
+}
+
+.pm-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.pm-main {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pm-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.pm-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.pm-remove {
+  color: var(--red-400);
+}
+
+.pm-editor {
+  margin-top: 12px;
+  padding: 16px;
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  border-radius: var(--radius-md);
+}
+
+.pm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.pm-instructions {
+  background: var(--white);
+}
+
+.pm-instructions:focus {
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.14);
+}
+

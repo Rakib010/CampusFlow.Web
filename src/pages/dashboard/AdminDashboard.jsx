@@ -92,7 +92,7 @@ export default function AdminDashboard() {
                 label="Pending Approvals"
                 value={Number(data.users?.pending_organizers ?? 0)}
                 color={Number(data.users?.pending_organizers) > 0 ? 'amber' : 'cyan'}
-                sub={Number(data.users?.pending_organizers) > 0 ? 'Organizers awaiting approval' : 'All clear'}
+                sub={Number(data.users?.pending_organizers) > 0 ? 'Organizers awaiting approval' : undefined}
               />
               <StatCard
                 icon={<Icon name="trophy" size={22} />}

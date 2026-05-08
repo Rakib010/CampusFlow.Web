@@ -114,40 +114,22 @@ export default function VerifyOtpPage() {
   };
 
   return (
-    <div className="auth-card" style={{ textAlign: 'center' }}>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
+    <div className="auth-card auth-center">
+      <div className="auth-logo-center">
         <AppLogo size="lg" />
       </div>
 
-      <div style={{
-        width: 56, height: 56, margin: '0 auto 16px',
-        background: 'rgba(34,211,238,0.1)', borderRadius: 'var(--radius-lg)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: 'var(--accent)',
-      }}>
+      <div className="auth-badge-icon">
         <Icon name="shield" size={28} strokeWidth={1.6} />
       </div>
-      <h1 className="auth-title" style={{ marginBottom: 6 }}>Verify your email</h1>
-      <p className="auth-subtitle" style={{ marginBottom: 8 }}>
+      <h1 className="auth-title auth-title-tight">Verify your email</h1>
+      <p className="auth-subtitle auth-subtitle-tight">
         We sent a 6-digit code to
       </p>
-      <p style={{
-        color: 'var(--accent)',
-        fontWeight: 600,
-        fontSize: 14,
-        marginBottom: 28,
-        wordBreak: 'break-all',
-      }}>
-        {email}
-      </p>
+      <p className="auth-email-highlight">{email}</p>
 
       <form onSubmit={handleVerify}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: 8,
-          marginBottom: 28,
-        }}>
+        <div className="auth-otp-row">
           {digits.map((d, i) => (
             <input
               key={i}
@@ -159,28 +141,7 @@ export default function VerifyOtpPage() {
               onChange={(e) => handleChange(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
               onPaste={handlePaste}
-              style={{
-                width: 44,
-                height: 52,
-                fontSize: 22,
-                fontWeight: 600,
-                textAlign: 'center',
-                background: d ? 'rgba(34,211,238,0.06)' : 'var(--bg-input, rgba(15,23,42,0.6))',
-                color: 'var(--text-primary)',
-                border: `1.5px solid ${d ? 'var(--accent)' : 'var(--border-soft)'}`,
-                borderRadius: 'var(--radius-md)',
-                outline: 'none',
-                transition: 'all var(--transition-fast)',
-                fontFamily: 'monospace',
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = 'var(--accent)';
-                e.target.style.boxShadow = '0 0 0 3px rgba(34,211,238,0.15)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = d ? 'var(--accent)' : 'var(--border-soft)';
-                e.target.style.boxShadow = 'none';
-              }}
+              className={`otp-input${d ? ' filled' : ''}`}
             />
           ))}
         </div>
@@ -194,31 +155,23 @@ export default function VerifyOtpPage() {
         </button>
       </form>
 
-      <div style={{ marginTop: 24, fontSize: 13, color: 'var(--text-muted)' }}>
+      <div className="auth-resend">
         Didn't get the code?{' '}
         {cooldown > 0 ? (
-          <span style={{ color: 'var(--text-muted)' }}>Resend in {cooldown}s</span>
+          <span className="auth-resend-muted">Resend in {cooldown}s</span>
         ) : (
           <button
             type="button"
             onClick={handleResend}
             disabled={resending}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--accent)',
-              cursor: resending ? 'wait' : 'pointer',
-              fontWeight: 500,
-              fontSize: 13,
-              padding: 0,
-            }}
+            className="auth-resend-btn"
           >
             {resending ? 'Sending…' : 'Resend code'}
           </button>
         )}
       </div>
 
-      <div className="auth-footer" style={{ marginTop: 18 }}>
+      <div className="auth-footer auth-footer-tight">
         <Link to="/register">← Back to register</Link>
       </div>
     </div>

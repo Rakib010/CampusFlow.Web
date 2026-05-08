@@ -1,0 +1,102 @@
+/* ==========================================================================
+   CampusFlow — SelectMenu (custom dropdown) styles
+   ========================================================================== */
+
+.select-menu {
+  position: relative;
+}
+
+.select-menu__btn {
+  width: 100%;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: var(--white);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.select-menu__btn:hover {
+  border-color: rgba(139, 92, 246, 0.18);
+}
+
+.select-menu__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.select-menu__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-menu__icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.select-menu__clear {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.select-menu__clear:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.16);
+  color: rgba(185, 28, 28, 0.95);
+}
+
+.select-menu__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(2, 6, 23, 0.12);
+  padding: 6px;
+  z-index: 40;
+}
+
+.select-menu__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-default);
+  font-size: 14px;
+  text-align: left;
+}
+
+.select-menu__item:hover {
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--text-primary);
+}
+
+.select-menu__item.is-active {
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+

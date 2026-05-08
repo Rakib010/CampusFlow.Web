@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import Topbar from '../../components/layout/Topbar.jsx';
 import Icon from '../../components/ui/Icon.jsx';
 import PaymentMethodsManager from '../../components/events/PaymentMethodsManager.jsx';
+import SelectMenu from '../../components/ui/SelectMenu.jsx';
+import DateTimePicker from '../../components/ui/DateTimePicker.jsx';
 import { eventsService } from '../../services/events.service.js';
 import { paymentMethodsService } from '../../services/paymentMethods.service.js';
 import useToastStore from '../../stores/useToastStore.js';
@@ -158,25 +160,183 @@ export default function CreateEventPage() {
     <>
       <Topbar />
       <div className="page-content">
-        <div style={{ maxWidth: 700, margin: '0 auto' }}>
+        <div className="event-form-shell">
           <div className="page-header">
             <div>
               <div className="page-title">Create Event</div>
               <div className="page-subtitle">Set up a new campus event</div>
             </div>
           </div>
-          <button className="btn btn-secondary btn-sm" style={{ marginBottom: 20 }} onClick={() => navigate('/events')}>← Back</button>
           <form onSubmit={handleSubmit}>
-            {/* Banner upload */}
-            <div className="card" style={{ marginBottom: 16 }}>
-              <div className="card-title" style={{ marginBottom: 14 }}>Cover Image</div>
+            <div className="event-form-bg">
+              <div className="event-create-grid">
+              {/* Left column */}
+              <div className="event-create-left">
+                <div className="event-section">
+                  <div className="event-section-title">Event Details</div>
+                  <div className="form-grid">
+                    <div className="input-wrap span-2">
+                      <label className="input-label" htmlFor="title">Title <span className="required-star">*</span></label>
+                      <input id="title" name="title" className="input-field" placeholder="Event title" value={form.title} onChange={handleChange} required />
+                    </div>
+                    <div className="input-wrap span-2">
+                      <label className="input-label" htmlFor="category">Category</label>
+                      <SelectMenu
+                        value={form.category}
+                        onChange={(v) => setForm((f) => ({ ...f, category: v }))}
+                        placeholder="Select category"
+                        width="100%"
+                        options={[
+                          { value: '', label: 'Select category' },
+                          ...CATEGORIES.map((c) => ({ value: c, label: c })),
+                        ]}
+                        allowClear={false}
+                      />
+                    </div>
+                    <div className="input-wrap span-2">
+                      <label className="input-label" htmlFor="description">Description</label>
+                      <textarea id="description" name="description" className="textarea-field event-description" placeholder="Describe your event…" value={form.description} onChange={handleChange} rows={5} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ticketing */}
+                <div className="event-section">
+                  <div className="event-section-title">Ticketing</div>
+                  <label className="ticketing-check">
+                    <input type="checkbox" name="is_paid" checked={form.is_paid} onChange={handleChange} />
+                    <span>This is a paid event</span>
+                  </label>
+                  {form.is_paid && (
+                    <>
+                      <div className="ticketing-note">
+                        Set ticket type prices (General, Student, VIP) in the event&apos;s <strong>Manage</strong> page after creating it.
+                      </div>
+                      <PaymentMethodsManager onLocalChange={setPaymentMethods} />
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Right column */}
+              <div className="event-create-right">
+                <div className="event-section">
+                  <div className="event-section-title">Schedule & Capacity</div>
+                  <div className="form-grid">
+                    <div className="input-wrap span-2">
+                      <label className="input-label">Location</label>
+                      {(() => {
+                        const currentMode = form.location_mode || (form.location?.match(/^https?:\/\//) ? 'online' : 'in_person');
+                        return (
+                          <div className="location-choice" role="radiogroup" aria-label="Location mode">
+                            {[
+                              { value: 'in_person', label: 'In person' },
+                              { value: 'online', label: 'Zoom / Online' },
+                            ].map((opt) => {
+                              const active = currentMode === opt.value;
+                              return (
+                                <label key={opt.value} className={`location-pill${active ? ' is-active' : ''}`}>
+                                  <input
+                                    type="radio"
+                                    name="location_mode"
+                                    value={opt.value}
+                                    checked={active}
+                                    onChange={() => setForm((f) => ({ ...f, location_mode: opt.value, location: '' }))}
+                                  />
+                                  <span className="location-pill__dot" aria-hidden="true" />
+                                  <span className="location-pill__label">{opt.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                      {(form.location_mode || (form.location?.match(/^https?:\/\//) ? 'online' : 'in_person')) === 'online' ? (
+                        <input
+                          id="location"
+                          name="location"
+                          type="url"
+                          className="input-field"
+                          placeholder="https://zoom.us/j/123…  or  https://meet.google.com/…"
+                          value={form.location}
+                          onChange={handleChange}
+                        />
+                      ) : (
+                        <input
+                          id="location"
+                          name="location"
+                          className="input-field"
+                          placeholder="Conference Hall A, Building 3"
+                          value={form.location}
+                          onChange={handleChange}
+                        />
+                      )}
+                    </div>
+
+                    <div className="input-wrap">
+                      <label className="input-label" htmlFor="start_date">Start Date <span className="required-star">*</span></label>
+                      <DateTimePicker
+                        value={form.start_date}
+                        onChange={(v) => setForm((f) => ({ ...f, start_date: v }))}
+                        min={new Date().toISOString().slice(0, 16)}
+                      />
+                    </div>
+                    <div className="input-wrap">
+                      <label className="input-label" htmlFor="end_date">End Date <span className="required-star">*</span></label>
+                      <DateTimePicker
+                        value={form.end_date}
+                        onChange={(v) => setForm((f) => ({ ...f, end_date: v }))}
+                        min={form.start_date || new Date().toISOString().slice(0, 16)}
+                      />
+                    </div>
+
+                    <div className="input-wrap span-2">
+                      <label className="input-label" htmlFor="max_capacity">Max Capacity</label>
+                      <input id="max_capacity" name="max_capacity" type="number" min="1" className="input-field" placeholder="Leave blank for unlimited" value={form.max_capacity} onChange={handleChange} />
+                    </div>
+
+                    <div className="input-wrap span-2">
+                      <label className="input-label" htmlFor="attendee_registration_deadline">Ticket Sales Deadline</label>
+                      <DateTimePicker
+                        value={form.attendee_registration_deadline}
+                        onChange={(v) => setForm((f) => ({ ...f, attendee_registration_deadline: v }))}
+                        min={new Date().toISOString().slice(0, 16)}
+                        max={form.start_date || undefined}
+                        placeholder="Select deadline…"
+                      />
+                      <div className="field-hint">
+                        Last date attendees can buy tickets. Must be on or before the event starts.
+                      </div>
+                    </div>
+
+                    <div className="input-wrap span-2">
+                      <label className="input-label" htmlFor="volunteer_registration_deadline">Volunteer Application Deadline</label>
+                      <DateTimePicker
+                        value={form.volunteer_registration_deadline}
+                        onChange={(v) => setForm((f) => ({ ...f, volunteer_registration_deadline: v }))}
+                        min={new Date().toISOString().slice(0, 16)}
+                        max={form.end_date || undefined}
+                        placeholder="Select deadline…"
+                      />
+                      <div className="field-hint">
+                        Last date volunteers can apply. Can stay open until the event ends.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Banner upload (bottom) */}
+            <div className="event-section event-cover-bottom">
+              <div className="event-section-title">Cover Image</div>
               {bannerPreview ? (
-                <div style={{ position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
-                  <img src={bannerPreview} alt="Banner preview" style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }} />
-                  <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 6 }}>
-                    <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
+                <div className="event-banner-preview">
+                  <img src={bannerPreview} alt="Banner preview" className="event-banner-img" />
+                  <div className="event-banner-actions">
+                    <label className="btn btn-secondary btn-sm">
                       <Icon name="edit" size={14} /> Change
-                      <input type="file" accept="image/*" onChange={handleBannerSelect} style={{ display: 'none' }} />
+                      <input type="file" accept="image/*" onChange={handleBannerSelect} className="event-file-hidden" />
                     </label>
                     <button type="button" className="btn btn-danger btn-sm" onClick={removeBanner}>
                       <Icon name="trash" size={14} /> Remove
@@ -184,193 +344,25 @@ export default function CreateEventPage() {
                   </div>
                 </div>
               ) : (
-                <label style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  gap: 10, padding: '36px 20px',
-                  border: '2px dashed var(--border-soft)', borderRadius: 'var(--radius-md)',
-                  background: 'rgba(34,211,238,0.03)',
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'rgba(34,211,238,0.06)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-soft)'; e.currentTarget.style.background = 'rgba(34,211,238,0.03)'; }}
-                >
-                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(34,211,238,0.1)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name="download" size={22} style={{ transform: 'rotate(180deg)' }} />
+                <label className="event-upload-drop">
+                  <div className="event-upload-icon">
+                    <Icon name="download" size={22} />
                   </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>Click to upload event banner</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>JPG, PNG or WebP · Max {MAX_BANNER_MB}MB · Recommended 1600 × 600</div>
+                  <div className="event-upload-text">
+                    <div className="event-upload-title">Click to upload event banner</div>
+                    <div className="event-upload-sub">JPG, PNG or WebP · Max {MAX_BANNER_MB}MB · Recommended 1600 × 600</div>
                   </div>
-                  <input type="file" accept="image/*" onChange={handleBannerSelect} style={{ display: 'none' }} />
+                  <input type="file" accept="image/*" onChange={handleBannerSelect} className="event-file-hidden" />
                 </label>
               )}
             </div>
 
-            <div className="card" style={{ marginBottom: 16 }}>
-              <div className="card-title" style={{ marginBottom: 20 }}>Event Details</div>
-              <div className="form-grid">
-                <div className="input-wrap span-2">
-                  <label className="input-label" htmlFor="title">Title <span style={{ color: 'var(--red-400)' }}>*</span></label>
-                  <input id="title" name="title" className="input-field" placeholder="Event title" value={form.title} onChange={handleChange} required />
-                </div>
-                <div className="input-wrap">
-                  <label className="input-label" htmlFor="category">Category</label>
-                  <select id="category" name="category" className="input-field select-field" value={form.category} onChange={handleChange}>
-                    <option value="">Select category</option>
-                    {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div className="input-wrap">
-                  <label className="input-label">Location</label>
-                  <div style={{ display: 'flex', gap: 4, marginBottom: 8, padding: 3, background: 'var(--bg-input, rgba(15,23,42,0.5))', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-md)' }}>
-                    {[
-                      { value: 'in_person', label: 'In-person' },
-                      { value: 'online', label: 'Online' },
-                    ].map((opt) => {
-                      const active = (form.location_mode || (form.location?.match(/^https?:\/\//) ? 'online' : 'in_person')) === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setForm((f) => ({
-                            ...f,
-                            location_mode: opt.value,
-                            // Clear the value when switching modes (so an old URL doesn't linger as a venue name)
-                            location: '',
-                          }))}
-                          style={{
-                            flex: 1,
-                            padding: '6px 12px',
-                            background: active ? 'var(--accent)' : 'transparent',
-                            color: active ? '#0a1628' : 'var(--text-muted)',
-                            border: 'none',
-                            borderRadius: 'var(--radius-sm)',
-                            fontSize: 13,
-                            fontWeight: active ? 600 : 500,
-                            cursor: 'pointer',
-                            transition: 'all var(--transition-fast)',
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {(form.location_mode || (form.location?.match(/^https?:\/\//) ? 'online' : 'in_person')) === 'online' ? (
-                    <input
-                      id="location"
-                      name="location"
-                      type="url"
-                      className="input-field"
-                      placeholder="https://zoom.us/j/123…  or  https://meet.google.com/…"
-                      value={form.location}
-                      onChange={handleChange}
-                    />
-                  ) : (
-                    <input
-                      id="location"
-                      name="location"
-                      className="input-field"
-                      placeholder="Conference Hall A, Building 3"
-                      value={form.location}
-                      onChange={handleChange}
-                    />
-                  )}
-                </div>
-                <div className="input-wrap">
-                  <label className="input-label" htmlFor="start_date">Start Date <span style={{ color: 'var(--red-400)' }}>*</span></label>
-                  <input
-                    id="start_date" name="start_date"
-                    type="datetime-local"
-                    className="input-field"
-                    value={form.start_date}
-                    onChange={handleChange}
-                    min={new Date().toISOString().slice(0, 16)}
-                    required
-                  />
-                </div>
-                <div className="input-wrap">
-                  <label className="input-label" htmlFor="end_date">End Date <span style={{ color: 'var(--red-400)' }}>*</span></label>
-                  <input
-                    id="end_date" name="end_date"
-                    type="datetime-local"
-                    className="input-field"
-                    value={form.end_date}
-                    onChange={handleChange}
-                    min={form.start_date || new Date().toISOString().slice(0, 16)}
-                    required
-                  />
-                </div>
-                <div className="input-wrap">
-                  <label className="input-label" htmlFor="max_capacity">Max Capacity</label>
-                  <input id="max_capacity" name="max_capacity" type="number" min="1" className="input-field" placeholder="Leave blank for unlimited" value={form.max_capacity} onChange={handleChange} />
-                </div>
-                <div className="input-wrap">
-                  <label className="input-label" htmlFor="attendee_registration_deadline">
-                    Ticket Sales Deadline
-                  </label>
-                  <input
-                    id="attendee_registration_deadline"
-                    name="attendee_registration_deadline"
-                    type="datetime-local"
-                    className="input-field"
-                    value={form.attendee_registration_deadline}
-                    onChange={handleChange}
-                    min={new Date().toISOString().slice(0, 16)}
-                    max={form.start_date || undefined}
-                  />
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                    Last date attendees can buy tickets. Must be on or before the event starts.
-                  </div>
-                </div>
-                <div className="input-wrap">
-                  <label className="input-label" htmlFor="volunteer_registration_deadline">
-                    Volunteer Application Deadline
-                  </label>
-                  <input
-                    id="volunteer_registration_deadline"
-                    name="volunteer_registration_deadline"
-                    type="datetime-local"
-                    className="input-field"
-                    value={form.volunteer_registration_deadline}
-                    onChange={handleChange}
-                    min={new Date().toISOString().slice(0, 16)}
-                    max={form.end_date || undefined}
-                  />
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                    Last date volunteers can apply. Can stay open until the event ends.
-                  </div>
-                </div>
-                <div className="input-wrap span-2">
-                  <label className="input-label" htmlFor="description">Description</label>
-                  <textarea id="description" name="description" className="textarea-field" placeholder="Describe your event…" value={form.description} onChange={handleChange} rows={4} />
-                </div>
-              </div>
-            </div>
-
-            {/* Ticketing */}
-            <div className="card" style={{ marginBottom: 20 }}>
-              <div className="card-title" style={{ marginBottom: 16 }}>Ticketing</div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: 16 }}>
-                <input type="checkbox" name="is_paid" checked={form.is_paid} onChange={handleChange} style={{ accentColor: 'var(--accent)', width: 16, height: 16 }} />
-                <span style={{ fontSize: 14, color: 'var(--text-default)' }}>This is a paid event</span>
-              </label>
-              {form.is_paid && (
-                <>
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 12px', background: 'rgba(34,211,238,0.06)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--accent)', marginBottom: 16 }}>
-                    Set ticket type prices (General, Student, VIP) in the event's <strong>Manage</strong> page after creating it.
-                  </div>
-                  <PaymentMethodsManager onLocalChange={setPaymentMethods} />
-                </>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div className="event-actions event-actions-bottom">
               <button type="button" className="btn btn-secondary" onClick={() => navigate('/events')}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? <Spinner size="sm" /> : 'Create Event'}
               </button>
+            </div>
             </div>
           </form>
         </div>

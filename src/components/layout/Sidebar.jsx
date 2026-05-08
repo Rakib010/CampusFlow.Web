@@ -1,7 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/useAuthStore.js';
 import useNotifStore from '../../stores/useNotifStore.js';
-import Avatar from '../ui/Avatar.jsx';
 import AppLogo from '../ui/AppLogo.jsx';
 import Icon from '../ui/Icon.jsx';
 
@@ -125,7 +124,6 @@ export default function Sidebar() {
 
   const role = user?.role || 'ATTENDEE';
   const sections = navConfig[role] || navConfig.ATTENDEE;
-  const fullName = user?.fullName || user?.email?.split('@')[0] || 'User';
 
   const handleLogout = () => {
     logout();
@@ -170,18 +168,6 @@ export default function Sidebar() {
           </button>
         </div>
       </nav>
-
-      {/* User footer */}
-      <div className="sidebar-footer">
-        <NavLink to="/profile" className="sidebar-user" style={{ textDecoration: 'none' }}>
-          <Avatar name={fullName} size="sm" />
-          <div className="sidebar-user-info">
-            <div className="sidebar-user-name">{fullName}</div>
-            <div className="sidebar-user-role">{role.replace('_', ' ')}</div>
-          </div>
-          <div className="sidebar-user-dot" />
-        </NavLink>
-      </div>
     </aside>
   );
 }

@@ -1,0 +1,48 @@
+/* CampusFlow — react-datepicker overrides  */
+
+.dtp-input {
+  cursor: pointer;
+}
+
+.react-datepicker {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(2, 6, 23, 0.14);
+  overflow: hidden;
+  font-family: var(--font-sans);
+}
+
+.react-datepicker__header {
+  background: linear-gradient(180deg, #f2edff 0%, #eef2ff 45%, #f8fafc 100%);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.react-datepicker__current-month,
+.react-datepicker-time__header,
+.react-datepicker-year-header {
+  color: rgba(15, 23, 42, 0.92);
+  font-weight: 700;
+}
+
+.react-datepicker__day-name,
+.react-datepicker__day,
+.react-datepicker__time-name {
+  color: rgba(30, 41, 59, 0.9);
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: var(--accent);
+  color: white;
+}
+
+.react-datepicker__time-container {
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.react-datepicker__time-list-item--selected {
+  background: rgba(139, 92, 246, 0.14) !important;
+  color: rgba(15, 23, 42, 0.92) !important;
+  font-weight: 700;
+}
+

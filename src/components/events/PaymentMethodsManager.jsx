@@ -3,6 +3,7 @@ import { paymentMethodsService, PAYMENT_METHOD_TYPES } from '../../services/paym
 import useToastStore from '../../stores/useToastStore.js';
 import Icon from '../ui/Icon.jsx';
 import { Spinner } from '../ui/Spinner.jsx';
+import SelectMenu from '../ui/SelectMenu.jsx';
 
 const blank = { methodType: 'bkash', accountName: '', accountNumber: '', accountLabel: '', instructions: '' };
 
@@ -16,7 +17,7 @@ const blank = { methodType: 'bkash', accountName: '', accountNumber: '', account
 export default function PaymentMethodsManager({ eventId, onLocalChange }) {
   const [methods, setMethods] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [editing, setEditing] = useState(null); // null | 'new' | { id, ...method }
+  const [editing, setEditing] = useState(null); 
   const [form, setForm] = useState(blank);
   const [saving, setSaving] = useState(false);
 
@@ -99,12 +100,9 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <div className="pm-header">
         <div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Payment Methods</div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-            How attendees pay you for online tickets (bKash, Nagad, bank transfer, etc.). They send money directly to your account; you confirm each ticket after verifying.
-          </div>
+          <div className="pm-title">Payment Methods</div>
         </div>
         {!editing && (
           <button type="button" className="btn btn-secondary btn-sm" onClick={startCreate}>
@@ -114,21 +112,13 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
       </div>
 
       {loading ? (
-        <div style={{ padding: 14, textAlign: 'center' }}><Spinner /></div>
+        <div className="pm-loading"><Spinner /></div>
       ) : methods.length === 0 && !editing ? (
-        <div style={{
-          padding: '20px 16px',
-          textAlign: 'center',
-          color: 'var(--text-muted)',
-          fontSize: 13,
-          background: 'rgba(34,211,238,0.04)',
-          border: '1px dashed var(--border-soft)',
-          borderRadius: 'var(--radius-md)',
-        }}>
+        <div className="pm-empty">
           No payment methods yet. Without one, attendees can only pay in cash at the venue.
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="pm-list">
           {methods.map((m) => {
             const type = m.method_type || m.methodType;
             const num = m.account_number || m.accountNumber;
@@ -138,32 +128,15 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
             return (
               <div
                 key={m.id || m._localId}
-                style={{
-                  padding: '12px 14px',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 14,
-                }}
+                className="pm-item"
               >
-                <span style={{
-                  background: typeColor(type),
-                  color: 'white',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  padding: '4px 10px',
-                  borderRadius: 4,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  flexShrink: 0,
-                }}>{typeLabel(type)}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {num} {label && <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 400 }}>· {label}</span>}
+                <span className="pm-type-pill" style={{ background: typeColor(type) }}>{typeLabel(type)}</span>
+                <div className="pm-body">
+                  <div className="pm-main">
+                    {num} {label && <span className="pm-label">· {label}</span>}
                   </div>
                   {(name || instr) && (
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                    <div className="pm-sub">
                       {name}{name && instr ? ' · ' : ''}{instr}
                     </div>
                   )}
@@ -171,7 +144,7 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => startEdit(m)} title="Edit">
                   <Icon name="edit" size={13} />
                 </button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => remove(m)} title="Remove" style={{ color: 'var(--red-400)' }}>
+                <button type="button" className="btn btn-ghost btn-sm pm-remove" onClick={() => remove(m)} title="Remove">
                   <Icon name="trash" size={13} />
                 </button>
               </div>
@@ -181,25 +154,18 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
       )}
 
       {editing && (
-        <form onSubmit={save} style={{
-          marginTop: 12,
-          padding: 16,
-          background: 'rgba(34,211,238,0.04)',
-          border: '1px solid rgba(34,211,238,0.2)',
-          borderRadius: 'var(--radius-md)',
-        }}>
+        <form onSubmit={save} className="pm-editor">
           <div className="form-grid">
             <div className="input-wrap">
               <label className="input-label">Method type *</label>
-              <select
-                className="input-field select-field"
+              <SelectMenu
                 value={form.methodType}
-                onChange={(e) => setForm((f) => ({ ...f, methodType: e.target.value }))}
-              >
-                {PAYMENT_METHOD_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, methodType: v }))}
+                placeholder="Select method"
+                width="100%"
+                options={PAYMENT_METHOD_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+                allowClear={false}
+              />
             </div>
             <div className="input-wrap">
               <label className="input-label">Account number *</label>
@@ -232,7 +198,7 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
             <div className="input-wrap span-2">
               <label className="input-label">Instructions (optional)</label>
               <textarea
-                className="textarea-field"
+                className="textarea-field pm-instructions"
                 rows={2}
                 placeholder="Send via Send Money — no fee"
                 value={form.instructions}
@@ -240,7 +206,7 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
               />
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
+          <div className="pm-actions">
             <button type="button" className="btn btn-ghost btn-sm" onClick={cancel}>Cancel</button>
             <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
               {saving ? <Spinner size="sm" /> : (editing === 'new' ? 'Add Method' : 'Save Changes')}

@@ -8,6 +8,7 @@ import { eventsService } from '../../services/events.service.js';
 import useAuthStore from '../../stores/useAuthStore.js';
 import Icon from '../../components/ui/Icon.jsx';
 import useToastStore from '../../stores/useToastStore.js';
+import SelectMenu from '../../components/ui/SelectMenu.jsx';
 
 const STATUSES = ['', 'published', 'ongoing', 'completed', 'cancelled', 'draft'];
 const CAN_CREATE = ['ORGANIZER', 'ADMIN', 'SUPER_ADMIN'];
@@ -67,7 +68,7 @@ export default function EventsPage() {
         </div>
 
         <div className="filter-bar">
-          <div className="search-wrap" style={{ flex: 1 }}>
+          <div className="search-wrap events-filter-search">
             <span className="search-icon">
               <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="8" />
@@ -81,17 +82,13 @@ export default function EventsPage() {
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
           </div>
-          <select
-            className="input-field select-field"
-            style={{ height: 40, width: 160 }}
+          <SelectMenu
             value={status}
-            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          >
-            <option value="">All statuses</option>
-            {STATUSES.filter(Boolean).map((s) => (
-              <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-            ))}
-          </select>
+            onChange={(v) => { setStatus(v); setPage(1); }}
+            placeholder="All statuses"
+            width={160}
+            options={STATUSES.filter(Boolean).map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))}
+          />
         </div>
 
         {loading ? <PageSpinner /> : events.length === 0 ? (
@@ -103,7 +100,7 @@ export default function EventsPage() {
             <div className="empty-state-desc">Try adjusting your filters or create a new event.</div>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginBottom: 8 }}>
+          <div className="events-grid">
             {events.map((ev) => <EventCard key={ev.id} event={ev} onClick={() => navigate(`/events/${ev.id}`)} />)}
           </div>
         )}

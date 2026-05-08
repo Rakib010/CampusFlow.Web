@@ -1,0 +1,283 @@
+/* ==========================================================================
+   CampusFlow — Create Event page styles (no inline styles)
+   ========================================================================== */
+
+.event-form-shell {
+  width: 100%;
+}
+
+.event-form-bg {
+  width: 100%;
+  border-radius: 22px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 18px 52px rgba(2, 6, 23, 0.08);
+  padding: 18px;
+}
+
+.event-section {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.event-section + .event-section {
+  margin-top: 18px;
+}
+
+.event-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+  letter-spacing: -0.01em;
+}
+
+.event-section-title::after {
+  content: '';
+  display: block;
+  height: 1px;
+  background: rgba(15, 23, 42, 0.08);
+  margin-top: 10px;
+}
+
+.event-create-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  column-gap: 50px;
+  row-gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .event-create-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.event-cover-bottom {
+  margin-top: 20px;
+}
+
+.event-actions-bottom {
+  margin-top: 14px;
+}
+
+.event-back-btn {
+  margin-bottom: 20px;
+}
+
+.event-card {
+  margin-bottom: 16px;
+}
+
+.event-card-title {
+  margin-bottom: 14px;
+}
+
+.event-card-title-lg {
+  margin-bottom: 20px;
+}
+
+.event-banner-preview {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.event-banner-img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+.event-banner-preview.is-uploading .event-banner-img {
+  opacity: 0.6;
+}
+
+.btn-wait {
+  cursor: wait;
+}
+
+.event-banner-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.event-file-hidden {
+  display: none;
+}
+
+.event-upload-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 36px 20px;
+  border: 2px dashed var(--border-soft);
+  border-radius: var(--radius-md);
+  background: rgba(139, 92, 246, 0.03);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.event-upload-drop.is-uploading {
+  cursor: wait;
+  opacity: 0.85;
+}
+
+.event-upload-drop:hover {
+  border-color: var(--accent);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.event-upload-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.event-upload-text {
+  text-align: center;
+}
+
+.event-upload-title {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.event-upload-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.required-star {
+  color: var(--red-400);
+}
+
+.location-choice {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.location-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(30, 41, 59, 0.9);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+  user-select: none;
+}
+
+.location-pill input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.location-pill__dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(100, 116, 139, 0.7);
+  background: transparent;
+  box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 1);
+}
+
+.location-pill__label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.location-pill:hover {
+  border-color: rgba(139, 92, 246, 0.22);
+  background: rgba(237, 233, 254, 0.55);
+}
+
+.location-pill.is-active {
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(237, 233, 254, 0.85);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.08);
+}
+
+.location-pill.is-active .location-pill__dot {
+  border-color: rgba(124, 58, 237, 0.95);
+  background: rgba(124, 58, 237, 0.95);
+  box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 1);
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.ticketing-card {
+  margin-bottom: 20px;
+}
+
+.ticketing-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.ticketing-check input {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+.ticketing-check span {
+  font-size: 14px;
+  color: var(--text-default);
+}
+
+.ticketing-note {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  background: rgba(139, 92, 246, 0.06);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent);
+  margin-bottom: 16px;
+}
+
+.event-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.event-description {
+  background: var(--white);
+}
+
+.event-description:focus {
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.14);
+}
+

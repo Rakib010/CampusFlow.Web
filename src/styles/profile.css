@@ -1,0 +1,217 @@
+/* CampusFlow — Profile page (screenshot-like layout) */
+
+.profile-shell {
+  width: 100%;
+  max-width: 980px;
+}
+
+.profile-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 14px;
+}
+
+.profile-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.profile-tabs {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.profile-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 2px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.profile-tab.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.profile-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.profile-hero {
+  display: flex;
+  gap: 16px;
+  padding: 18px;
+  align-items: center;
+}
+
+.profile-hero__meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-hero__name {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.profile-hero__email {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.profile-hero__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.profile-photo-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.profile-photo-btn {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid var(--bg-surface);
+  background: var(--gradient-accent);
+  color: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.profile-section {
+  padding: 18px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.profile-section--about {
+  background: var(--bg-surface);
+}
+
+.profile-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.profile-section__title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.profile-edit-link {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.profile-edit-link:hover {
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.profile-kv {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 10px 18px;
+  align-items: center;
+}
+
+@media (max-width: 720px) {
+  .profile-kv {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile-k {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.profile-v {
+  font-size: 14px;
+  color: var(--text-default);
+  min-width: 0;
+}
+
+.profile-muted {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.profile-actions-row {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.profile-skill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-skill-chip {
+  appearance: none;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: var(--radius-pill);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  background: rgba(148, 163, 184, 0.75); /* gray */
+  color: var(--white);
+  cursor: default;
+}
+
+.profile-skill-chip.is-active {
+  background: var(--accent);
+  border-color: rgba(147, 51, 234, 0.28);
+}
+
+.profile-skill-chip:disabled {
+  opacity: 1;
+}
+

@@ -282,166 +282,69 @@ export default function EventDetailPage() {
   const isOnline = /^https?:\/\//i.test(venueRaw);
   const venue = venueRaw || 'Not specified';
   const capacity = event.max_volunteers ? `${event.max_volunteers} spots` : 'Unlimited';
+  const dateRange = startDate === endDate ? startDate : `${startDate} – ${endDate}`;
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard?.writeText(window.location.href);
+      toast.success('Link copied');
+    } catch {
+      toast.error('Failed to copy link.');
+    }
+  };
 
   return (
     <>
       <Topbar />
       <div className="page-content">
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-
-          {/* Back link */}
-          <button
-            className="btn btn-ghost btn-sm"
-            style={{ marginBottom: 16, paddingLeft: 0 }}
-            onClick={() => navigate('/events')}
-          >
-            <Icon name="arrowLeft" size={14} /> Back to events
-          </button>
-
-          {/* Hero card */}
-          <div className="card" style={{
-            padding: 0,
-            marginBottom: 20,
-            overflow: 'hidden',
-            background: 'linear-gradient(135deg, rgba(34,211,238,0.04) 0%, rgba(8,145,178,0.02) 100%)',
-            borderColor: 'rgba(34,211,238,0.2)',
-          }}>
-            {/* Banner with main countdown overlay */}
-            {event.banner_url ? (
-              <div style={{
-                height: 220,
-                background: `linear-gradient(180deg, transparent 0%, rgba(10,22,40,0.85) 100%), url(${event.banner_url}) center/cover no-repeat`,
-                position: 'relative',
-              }}>
-                {/* Main event countdown — overlaid bottom-right (only when active) */}
-                {(event.status === 'published' || event.status === 'ongoing') && (
-                  <div style={{
-                    position: 'absolute',
-                    right: 20,
-                    bottom: 20,
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    background: 'rgba(10,22,40,0.55)',
-                    borderRadius: 'var(--radius-lg)',
-                    padding: 4,
-                  }}>
-                    <Countdown
-                      target={event.status === 'ongoing' ? event.end_date : event.start_date}
-                      variant={event.status === 'ongoing' ? 'ends' : 'starts'}
-                      label={event.status === 'ongoing' ? 'Ends in' : 'Starts in'}
-                      size="md"
-                    />
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{
-                height: 100,
-                background: 'linear-gradient(135deg, rgba(34,211,238,0.15) 0%, rgba(8,145,178,0.08) 100%)',
-                borderBottom: '1px solid var(--border-subtle)',
-                position: 'relative',
-              }}>
-                {(event.status === 'published' || event.status === 'ongoing') && (
-                  <div style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)' }}>
-                    <Countdown
-                      target={event.status === 'ongoing' ? event.end_date : event.start_date}
-                      variant={event.status === 'ongoing' ? 'ends' : 'starts'}
-                      label={event.status === 'ongoing' ? 'Ends in' : 'Starts in'}
-                      size="sm"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div style={{ padding: '24px 28px' }}>
-              {/* Title row */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-                    {/* Status hidden when 'published' (it's the normal state and would just be noise) */}
-                    {event.status && event.status !== 'published' && (
-                      <Badge label={event.status} color={STATUS_COLOR[event.status] || 'slate'} />
-                    )}
-                    {event.category && <Badge label={event.category} color="purple" />}
-                    {event.is_paid && <Badge label="Paid" color="amber" />}
-                  </div>
-                  <h1 style={{
-                    margin: 0,
-                    fontSize: 28,
-                    fontWeight: 700,
-                    color: 'var(--text-primary)',
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1.2,
-                  }}>
-                    {event.title}
-                  </h1>
-                </div>
-
-                {/* Actions */}
+        <div className="event-detail-page">
+          <div className="event-detail-shell">
+            <div className="event-detail-header">
+              <div className="event-detail-header__title">{event.title}</div>
+              <div className="event-detail-header__actions">
                 {canManage && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button className="btn btn-primary btn-sm" onClick={() => navigate(`/events/${id}/manage`)}>
+                  <>
+                    <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/events/${id}/manage`)}>
                       <Icon name="dashboard" size={14} /> Manage
                     </button>
                     <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/events/${id}/edit`)}>
                       <Icon name="edit" size={14} /> Edit
                     </button>
-                    {nextStatus && (
-                      <button className="btn btn-success btn-sm" onClick={() => setConfirmStatus(true)}>
-                        <Icon name="arrowRight" size={14} /> Advance
-                      </button>
-                    )}
-                  </div>
+                  </>
+                )}
+                <button className="btn btn-primary btn-sm" onClick={handleShare}>
+                  <Icon name="share" size={14} /> Share
+                </button>
+                {canManage && event.status !== 'cancelled' && event.status !== 'completed' && (
+                  <button className="btn btn-danger btn-sm" onClick={() => setConfirmCancel(true)}>
+                    Cancel
+                  </button>
+                )}
+                {canManage && (
+                  <button className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(true)}>
+                    <Icon name="trash" size={14} /> Delete
+                  </button>
                 )}
               </div>
-
-              {/* Description */}
-              {event.description && (
-                <p style={{
-                  fontSize: 14,
-                  color: 'var(--text-default)',
-                  lineHeight: 1.7,
-                  margin: '12px 0 0',
-                  whiteSpace: 'pre-wrap',
-                }}>
-                  {event.description}
-                </p>
-              )}
             </div>
-          </div>
+            <div className="event-hero">
+              <div className="event-hero__right">
+                {event.description && <div className="event-hero__desc">{event.description}</div>}
+              </div>
+              <div
+                className={`event-hero__image${event.banner_url ? ' has-banner' : ''}`}
+                style={event.banner_url ? { backgroundImage: `url(${event.banner_url})` } : undefined}
+              >
+                <div className="event-hero__image-badges">
+                  {event.status && event.status !== 'published' && (
+                    <Badge label={event.status} color={STATUS_COLOR[event.status] || 'slate'} />
+                  )}
+                  {event.category && <Badge label={event.category} color="purple" />}
+                  {event.is_paid && <Badge label="Paid" color="amber" />}
+                </div>
+              </div>
+            </div>
 
-          {/* Quick stats grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: 12,
-            marginBottom: 24,
-          }}>
-            <MetaCard
-              icon="calendar"
-              label="Date"
-              value={startDate === endDate ? startDate : `${startDate} – ${endDate}`}
-              color="cyan"
-            />
-            <MetaCard icon="clock" label="Start Time" value={startTime || '—'} color="amber" />
-            <MetaCard
-              icon={isOnline ? 'spark' : 'mapPin'}
-              label={isOnline ? 'Online Event' : 'Venue'}
-              value={isOnline ? (
-                <a
-                  href={venueRaw}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: 'var(--cyan-400)', textDecoration: 'underline', textDecorationColor: 'rgba(34,211,238,0.4)' }}
-                >
-                  Join meeting →
-                </a>
-              ) : venue}
-              color="purple"
-            />
-            <MetaCard icon="users" label="Volunteer Spots" value={capacity} color="green" />
-          </div>
+            <div className="event-details-below">
 
           {/* Two-column body */}
           <div style={{
@@ -453,8 +356,8 @@ export default function EventDetailPage() {
 
             {/* Left: full details */}
             <div className="card">
-              <div className="card-title" style={{ marginBottom: 16 }}>Event Information</div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div className="card-title event-info-title">Event Information</div>
+              <div className="event-info-list">
                 {[
                   ['Category', event.category],
                   [isOnline ? 'Meeting link' : 'Venue', isOnline ? (
@@ -473,17 +376,9 @@ export default function EventDetailPage() {
                   ['Status', <Badge key="s" label={event.status} color={STATUS_COLOR[event.status] || 'slate'} />],
                   ['Created', fmtDate(event.created_at)],
                 ].map(([label, value]) => (
-                  <div key={label} style={{
-                    display: 'flex',
-                    gap: 16,
-                    padding: '12px 0',
-                    borderBottom: '1px solid var(--border-subtle)',
-                  }}>
-                    <span style={{
-                      width: 140, flexShrink: 0,
-                      fontSize: 13, color: 'var(--text-muted)', fontWeight: 500,
-                    }}>{label}</span>
-                    <span style={{ fontSize: 14, color: 'var(--text-default)' }}>{value || '—'}</span>
+                  <div key={label} className="event-info-row">
+                    <span className="event-info-label">{label}</span>
+                    <span className="event-info-value">{value || '—'}</span>
                   </div>
                 ))}
               </div>
@@ -745,15 +640,15 @@ export default function EventDetailPage() {
 
               {/* Organizer */}
               {(event.organizer_name || event.organizer_email) && (
-                <div className="card">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <div className="card event-side-box">
+                  <div className="event-side-box__head">
                     <Icon name="user" size={16} color="var(--accent)" />
-                    <div className="card-title" style={{ margin: 0 }}>Organizer</div>
+                    <div className="card-title event-side-box__title">Organizer</div>
                   </div>
-                  <div style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 600 }}>
+                  <div className="event-side-box__name">
                     {event.organizer_name || event.organizer_email}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                  <div className="event-side-box__email">
                     {event.organizer_email}
                   </div>
                   {isAdmin && (
@@ -765,26 +660,6 @@ export default function EventDetailPage() {
                       <Icon name="refresh" size={14} /> Reassign to another organizer
                     </button>
                   )}
-                </div>
-              )}
-
-              {/* Danger zone (admin only) */}
-              {canManage && (
-                <div className="card" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                    <Icon name="warning" size={16} color="var(--red-400)" />
-                    <div className="card-title" style={{ margin: 0, color: 'var(--red-400)' }}>Danger Zone</div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {event.status !== 'cancelled' && event.status !== 'completed' && (
-                      <button className="btn btn-danger btn-sm btn-full" onClick={() => setConfirmCancel(true)}>
-                        Cancel Event
-                      </button>
-                    )}
-                    <button className="btn btn-danger btn-sm btn-full" onClick={() => setConfirmDelete(true)}>
-                      <Icon name="trash" size={14} /> Delete Permanently
-                    </button>
-                  </div>
                 </div>
               )}
 
@@ -1032,6 +907,8 @@ export default function EventDetailPage() {
               </div>
             </div>
           )}
+            </div>
+          </div>
         </div>
       </div>
     </>

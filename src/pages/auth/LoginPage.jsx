@@ -8,11 +8,15 @@ import AppLogo from '../../components/ui/AppLogo.jsx';
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPw, setShowPw] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const { login, isLoading } = useAuthStore();
   const toast = useToastStore();
   const navigate = useNavigate();
 
-  const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    setUnverifiedEmail('');
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +29,11 @@ export default function LoginPage() {
       toast.success(`Welcome back, ${user.fullName || user.email}!`);
       navigate('/dashboard');
     } catch (err) {
-      toast.error(err.message);
+      if (err.message?.toLowerCase().includes('verify your email')) {
+        setUnverifiedEmail(form.email.trim());
+      } else {
+        toast.error(err.message);
+      }
     }
   };
 
@@ -98,6 +106,33 @@ export default function LoginPage() {
         <div className="auth-row-end">
           <Link to="/forgot-password" className="auth-link-sm">Forgot password?</Link>
         </div>
+
+        {unverifiedEmail && (
+          <div style={{
+            background: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.35)',
+            borderRadius: 10,
+            padding: '12px 14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}>
+            <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+              Your email isn't verified yet
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Check your inbox for the 6-digit code we sent to <strong>{unverifiedEmail}</strong>.
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ alignSelf: 'flex-start', marginTop: 2 }}
+              onClick={() => navigate(`/verify-otp?email=${encodeURIComponent(unverifiedEmail)}&from=login`)}
+            >
+              Verify my email →
+            </button>
+          </div>
+        )}
 
         <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={isLoading}>
           {isLoading ? <Spinner size="sm" /> : 'Sign in'}

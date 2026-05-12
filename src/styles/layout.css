@@ -298,7 +298,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   border-radius: 0;
-  overflow: hidden;
   border: none;
   box-shadow: none;
 }
@@ -323,9 +322,10 @@
 
 .auth-right {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 56px 60px;
+  overflow-y: auto;
   background: var(--white);
   color: var(--slate-700);
 

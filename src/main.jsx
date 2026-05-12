@@ -15,6 +15,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import './styles/datepicker.css';
 import './styles/event-detail.css';
 import './styles/profile.css';
+import './styles/feedback.css';
 import App from './App.jsx';
 
 createRoot(document.getElementById('root')).render(

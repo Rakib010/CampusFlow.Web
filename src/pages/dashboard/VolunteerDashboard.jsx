@@ -50,7 +50,6 @@ export default function VolunteerDashboard() {
           <StatCard icon={<Icon name="clipboard" size={22} />} label="Applications" value={apps.total} color="cyan" />
           <StatCard icon={<Icon name="checkCircle" size={22} />} label="Approved" value={apps.approved} color="green" />
           <StatCard icon={<Icon name="clock" size={22} />} label="Volunteer Hours" value={data.totalHours?.toFixed(1) || '0.0'} color="amber" />
-          <StatCard icon={<Icon name="award" size={22} />} label="Certificates" value={data.certificates} color="green" />
           <StatCard
             icon={<Icon name="star" size={22} />}
             label="Avg Rating"

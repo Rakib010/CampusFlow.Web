@@ -14,6 +14,7 @@ const colorMap = {
   approved: 'green',
   pending: 'amber',
   rejected: 'red',
+  reapplied: 'blue',
   confirmed: 'green',
   cash: 'amber',
   online: 'cyan',

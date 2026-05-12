@@ -2,6 +2,11 @@
 
 > React + Vite SPA for CampusFlow UVMS — the frontend client that consumes the [CampusFlow API](../CampusFlow.Api/).
 
+🌐 **[Context Diagram](../docs/context-diagram.svg)** — system boundary: actors and external services.
+🎭 **[Use Case Diagram](../docs/use-case-diagram.svg)** — actors and the use cases they perform.
+🔄 **[User Flow Diagram](../docs/user-flow.svg)** — how each role moves through the platform.
+📊 **[ER Diagram](../docs/er-diagram.svg)** — full database schema (consumed via the API).
+
 ---
 
 ## Table of Contents

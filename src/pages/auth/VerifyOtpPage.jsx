@@ -15,6 +15,7 @@ export default function VerifyOtpPage() {
   const toast = useToastStore();
 
   const initialEmail = params.get('email') || '';
+  const fromLogin = params.get('from') === 'login';
   const [email, setEmail] = useState(initialEmail);
   const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(''));
   const [verifying, setVerifying] = useState(false);
@@ -172,7 +173,7 @@ export default function VerifyOtpPage() {
       </div>
 
       <div className="auth-footer auth-footer-tight">
-        <Link to="/register">← Back to register</Link>
+        <Link to={fromLogin ? '/login' : '/register'}>← Back to {fromLogin ? 'login' : 'register'}</Link>
       </div>
     </div>
   );

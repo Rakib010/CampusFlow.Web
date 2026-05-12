@@ -27,4 +27,13 @@ export const ticketsService = {
 
   confirmCashPayment: (id) =>
     api.patch(`/tickets/${id}/confirm-cash`).then((r) => r.data),
+
+  rejectPayment: (id) =>
+    api.patch(`/tickets/${id}/reject`).then((r) => r.data),
+
+  bulkAction: (ticketIds, action) =>
+    api.post('/tickets/bulk-action', { ticketIds, action }).then((r) => r.data),
+
+  reapplyTicket: (id, payload) =>
+    api.patch(`/tickets/${id}/reapply`, payload).then((r) => r.data),
 };

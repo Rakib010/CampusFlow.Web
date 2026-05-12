@@ -48,7 +48,8 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
   const cancel = () => { setEditing(null); setForm(blank); };
 
   const save = async (e) => {
-    e?.preventDefault();
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
     if (!form.methodType || !form.accountNumber) {
       useToastStore.getState().error('Method type and account number are required.');
       return;
@@ -130,7 +131,10 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
                 key={m.id || m._localId}
                 className="pm-item"
               >
-                <span className="pm-type-pill" style={{ background: typeColor(type) }}>{typeLabel(type)}</span>
+                <span className="pm-type-pill" style={{ background: typeColor(type), display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 5px' }}>
+                  {(() => { const t = PAYMENT_METHOD_TYPES.find((x) => x.value === type); return t?.icon ? <img src={t.icon} alt="" style={{ width: 20, height: 20, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} /> : null; })()}
+                  {typeLabel(type)}
+                </span>
                 <div className="pm-body">
                   <div className="pm-main">
                     {num} {label && <span className="pm-label">· {label}</span>}
@@ -154,7 +158,10 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
       )}
 
       {editing && (
-        <form onSubmit={save} className="pm-editor">
+        // NOTE: This is a <div> (not a <form>) because this component is often rendered
+        // inside a parent <form> (e.g. CreateEventPage). Nested forms are invalid HTML
+        // and would cause the parent form to submit when "Add Method" is clicked.
+        <div className="pm-editor">
           <div className="form-grid">
             <div className="input-wrap">
               <label className="input-label">Method type *</label>
@@ -170,29 +177,37 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
             <div className="input-wrap">
               <label className="input-label">Account number *</label>
               <input
+                type="text"
                 className="input-field"
                 placeholder="01712345678"
                 value={form.accountNumber}
                 onChange={(e) => setForm((f) => ({ ...f, accountNumber: e.target.value }))}
-                required
+                onKeyDown={(e) => {
+                  // Enter inside this field would submit the OUTER form — block it
+                  if (e.key === 'Enter') { e.preventDefault(); save(e); }
+                }}
               />
             </div>
             <div className="input-wrap">
               <label className="input-label">Account name</label>
               <input
+                type="text"
                 className="input-field"
                 placeholder="Test event committee"
                 value={form.accountName}
                 onChange={(e) => setForm((f) => ({ ...f, accountName: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); save(e); } }}
               />
             </div>
             <div className="input-wrap">
               <label className="input-label">Account type / label</label>
               <input
+                type="text"
                 className="input-field"
                 placeholder="Personal, Merchant, Savings…"
                 value={form.accountLabel}
                 onChange={(e) => setForm((f) => ({ ...f, accountLabel: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); save(e); } }}
               />
             </div>
             <div className="input-wrap span-2">
@@ -208,11 +223,11 @@ export default function PaymentMethodsManager({ eventId, onLocalChange }) {
           </div>
           <div className="pm-actions">
             <button type="button" className="btn btn-ghost btn-sm" onClick={cancel}>Cancel</button>
-            <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
+            <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={saving}>
               {saving ? <Spinner size="sm" /> : (editing === 'new' ? 'Add Method' : 'Save Changes')}
             </button>
           </div>
-        </form>
+        </div>
       )}
     </div>
   );

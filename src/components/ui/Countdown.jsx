@@ -12,11 +12,11 @@ import Icon from './Icon.jsx';
 
 const VARIANTS = {
   starts: {
-    bg: 'linear-gradient(135deg, rgba(34,211,238,0.10), rgba(34,211,238,0.04))',
-    border: 'rgba(34,211,238,0.45)',
-    fg: 'var(--cyan-400)',
-    fgDim: 'rgba(34,211,238,0.65)',
-    glow: '0 0 20px rgba(34,211,238,0.25)',
+    bg: 'linear-gradient(135deg, rgba(139,92,246,0.10), rgba(139,92,246,0.04))',
+    border: 'rgba(139,92,246,0.30)',
+    fg: 'rgba(139,92,246,1)',
+    fgDim: 'rgba(139,92,246,0.60)',
+    glow: '0 0 20px rgba(139,92,246,0.18)',
     icon: 'clock',
   },
   ends: {

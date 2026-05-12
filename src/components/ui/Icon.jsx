@@ -55,6 +55,9 @@ const paths = {
   arrowRight: <><path d="M5 12h14M12 5l7 7-7 7" /></>,
   chevronDown: <><path d="m6 9 6 6 6-6" /></>,
   spark: <><path d="M12 2v6M12 16v6M2 12h6M16 12h6M5 5l4 4M15 15l4 4M5 19l4-4M15 9l4-4" /></>,
+  power: <><path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10" /></>,
+  ban: <><circle cx="12" cy="12" r="10" /><path d="m4.93 4.93 14.14 14.14" /></>,
+  sortAsc: <><path d="M3 6h18M7 12h10M11 18h4" /></>,
 };
 
 export default function Icon({

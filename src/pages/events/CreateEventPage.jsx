@@ -24,8 +24,11 @@ export default function CreateEventPage() {
     end_date: '',
     attendee_registration_deadline: '',
     volunteer_registration_deadline: '',
-    max_capacity: '',
+    max_attendees: '',
+    max_volunteers: '',
     is_paid: false,
+    allow_cash: true,
+    allow_online: true,
     ticket_price: '',
     tags: '',
   });
@@ -103,6 +106,17 @@ export default function CreateEventPage() {
         return;
       }
     }
+
+    // Capacity validation
+    if (form.max_attendees !== '' && parseInt(form.max_attendees) < 0) {
+      toast.error('Attendee capacity cannot be negative.');
+      return;
+    }
+    if (form.max_volunteers !== '' && parseInt(form.max_volunteers) < 0) {
+      toast.error('Volunteer capacity cannot be negative.');
+      return;
+    }
+
     setLoading(true);
     try {
       // Map UI fields → backend (camelCase + correct names)
@@ -114,7 +128,10 @@ export default function CreateEventPage() {
         startDate: form.start_date,
         endDate: form.end_date || form.start_date,
         isPaid: !!form.is_paid,
-        maxVolunteers: form.max_capacity ? parseInt(form.max_capacity) : 0,
+        allowCash: form.is_paid ? !!form.allow_cash : true,
+        allowOnline: form.is_paid ? !!form.allow_online : true,
+        maxAttendees: form.max_attendees ? parseInt(form.max_attendees) : 0,
+        maxVolunteers: form.max_volunteers ? parseInt(form.max_volunteers) : 0,
         attendeeRegistrationDeadline: form.attendee_registration_deadline || undefined,
         volunteerRegistrationDeadline: form.volunteer_registration_deadline || undefined,
       };
@@ -209,10 +226,30 @@ export default function CreateEventPage() {
                   </label>
                   {form.is_paid && (
                     <>
+                      {/* Payment method permissions */}
+                      <div style={{ margin: '12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                          Accepted payment types
+                        </div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', border: `1px solid ${form.allow_cash ? 'rgba(139,92,246,0.35)' : 'var(--border-subtle)'}`, borderRadius: 10, cursor: 'pointer', background: form.allow_cash ? 'rgba(139,92,246,0.05)' : 'transparent', transition: 'all 0.15s' }}>
+                          <input type="checkbox" name="allow_cash" checked={form.allow_cash} onChange={handleChange} style={{ accentColor: 'var(--accent)', width: 16, height: 16 }} />
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Cash at venue</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Attendees reserve now and pay at the event</div>
+                          </div>
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', border: `1px solid ${form.allow_online ? 'rgba(139,92,246,0.35)' : 'var(--border-subtle)'}`, borderRadius: 10, cursor: 'pointer', background: form.allow_online ? 'rgba(139,92,246,0.05)' : 'transparent', transition: 'all 0.15s' }}>
+                          <input type="checkbox" name="allow_online" checked={form.allow_online} onChange={handleChange} style={{ accentColor: 'var(--accent)', width: 16, height: 16 }} />
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Online transfer</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>bKash, Nagad, Rocket, Bank — add accounts below</div>
+                          </div>
+                        </label>
+                      </div>
                       <div className="ticketing-note">
                         Set ticket type prices (General, Student, VIP) in the event&apos;s <strong>Manage</strong> page after creating it.
                       </div>
-                      <PaymentMethodsManager onLocalChange={setPaymentMethods} />
+                      {form.allow_online && <PaymentMethodsManager onLocalChange={setPaymentMethods} />}
                     </>
                   )}
                 </div>
@@ -290,9 +327,37 @@ export default function CreateEventPage() {
                       />
                     </div>
 
-                    <div className="input-wrap span-2">
-                      <label className="input-label" htmlFor="max_capacity">Max Capacity</label>
-                      <input id="max_capacity" name="max_capacity" type="number" min="1" className="input-field" placeholder="Leave blank for unlimited" value={form.max_capacity} onChange={handleChange} />
+                    <div className="input-wrap">
+                      <label className="input-label" htmlFor="max_attendees">Attendee Capacity</label>
+                      <input
+                        id="max_attendees"
+                        name="max_attendees"
+                        type="number"
+                        min="0"
+                        className="input-field"
+                        placeholder="Unlimited"
+                        value={form.max_attendees}
+                        onChange={handleChange}
+                      />
+                      <div className="field-hint">
+                        Total tickets that can be issued across all ticket types.
+                      </div>
+                    </div>
+                    <div className="input-wrap">
+                      <label className="input-label" htmlFor="max_volunteers">Volunteer Capacity</label>
+                      <input
+                        id="max_volunteers"
+                        name="max_volunteers"
+                        type="number"
+                        min="0"
+                        className="input-field"
+                        placeholder="Unlimited"
+                        value={form.max_volunteers}
+                        onChange={handleChange}
+                      />
+                      <div className="field-hint">
+                        Total volunteers that can be approved across all roles.
+                      </div>
                     </div>
 
                     <div className="input-wrap span-2">

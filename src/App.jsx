@@ -24,7 +24,6 @@ import ProfilePage from './pages/profile/ProfilePage.jsx';
 import MyApplicationsPage from './pages/volunteers/MyApplicationsPage.jsx';
 import MyTicketsPage from './pages/tickets/MyTicketsPage.jsx';
 import EventManagePage from './pages/events/EventManagePage.jsx';
-import CertificatesPage from './pages/certificates/CertificatesPage.jsx';
 import FeedbackPage from './pages/feedback/FeedbackPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
@@ -74,7 +73,6 @@ export default function App() {
             {/* Volunteer routes */}
             <Route element={<RequireRole roles={['VOLUNTEER']} />}>
               <Route path="/my-applications" element={<MyApplicationsPage />} />
-              <Route path="/certificates" element={<CertificatesPage />} />
             </Route>
 
             {/* Attendee routes */}
@@ -84,11 +82,6 @@ export default function App() {
 
             {/* Shared routes — multiple roles */}
             <Route path="/feedback" element={<FeedbackPage />} />
-
-            {/* Admin stats accessible to admins too */}
-            <Route element={<RequireRole roles={['ADMIN', 'SUPER_ADMIN']} />}>
-              <Route path="/admin/certificates" element={<CertificatesPage />} />
-            </Route>
 
             {/* Super admin only */}
             <Route element={<RequireRole roles={['SUPER_ADMIN']} />}>

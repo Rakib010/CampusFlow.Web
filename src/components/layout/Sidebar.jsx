@@ -82,7 +82,6 @@ const navConfig = {
     {
       section: 'My Record',
       items: [
-        { to: '/certificates', icon: 'award', label: 'Certificates' },
         { to: '/feedback', icon: 'star', label: 'My Ratings' },
       ],
     },
@@ -158,16 +157,15 @@ export default function Sidebar() {
             ))}
           </div>
         ))}
-
-        {/* Logout */}
-        <div className="sidebar-section">
-          <div className="sidebar-section-label">Session</div>
-          <button className="sidebar-item" onClick={handleLogout}>
-            <span className="sidebar-item-icon"><Icon name="logout" size={17} /></span>
-            <span>Logout</span>
-          </button>
-        </div>
       </nav>
+
+      {/* Logout pinned at bottom */}
+      <div style={{ padding: '12px 10px', borderTop: '1px solid rgba(15,23,42,0.06)', flexShrink: 0 }}>
+        <button className="sidebar-item" onClick={handleLogout} style={{ width: '100%', color: 'var(--red-400)' }}>
+          <span className="sidebar-item-icon" style={{ color: 'var(--red-400)' }}><Icon name="logout" size={17} /></span>
+          <span>Logout</span>
+        </button>
+      </div>
     </aside>
   );
 }

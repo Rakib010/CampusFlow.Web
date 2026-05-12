@@ -24,4 +24,16 @@ export const feedbackService = {
 
   getMyOrganizerRatings: () =>
     api.get('/feedback/organizers/my/ratings').then((r) => r.data),
+
+  getLeaderboard: (limit = 10) =>
+    api.get(`/feedback/leaderboard?limit=${limit}`).then((r) => r.data),
+
+  listVolunteers: () =>
+    api.get('/feedback/volunteers/list').then((r) => r.data),
+
+  getVolunteerRatableEvents: (volunteerId) =>
+    api.get(`/feedback/volunteers/${volunteerId}/ratable-events`).then((r) => r.data),
+
+  getEventVolunteers: (eventId) =>
+    api.get(`/feedback/events/${eventId}/volunteers`).then((r) => r.data),
 };

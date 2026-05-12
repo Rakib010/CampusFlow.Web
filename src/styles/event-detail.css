@@ -9,32 +9,231 @@
   border-radius: 22px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background: rgba(255, 255, 255, 0.72);
-  box-shadow: none;
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.06);
   overflow: hidden;
 }
 
 .event-detail-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 14px;
-  padding: 18px 18px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-}
-
-.event-detail-header__title {
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(248, 250, 252, 0.6);
 }
 
 .event-detail-header__actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+/* ── Full-bleed banner hero ─────────────────────────────────────── */
+.event-banner {
+  position: relative;
+  width: 100%;
+  min-height: 360px;
+  display: flex;
+  align-items: flex-end;
+  padding: 28px 32px;
+  background:
+    linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(34, 211, 238, 0.14)),
+    linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.event-banner.has-banner {
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.05) 0%, rgba(2, 6, 23, 0.78) 100%),
+    var(--banner-url) center / cover no-repeat;
+}
+
+.event-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 80% 0%, rgba(139, 92, 246, 0.20), transparent 55%);
+  pointer-events: none;
+}
+
+.event-banner__badges {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  z-index: 2;
+}
+
+.event-banner__badges .badge {
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.18);
+  font-weight: 600;
+}
+
+.event-banner__badges .badge-cyan { background: rgba(6, 182, 212, 0.92); }
+.event-banner__badges .badge-purple { background: rgba(147, 51, 234, 0.92); }
+.event-banner__badges .badge-amber { background: rgba(245, 158, 11, 0.92); }
+.event-banner__badges .badge-slate { background: rgba(51, 65, 85, 0.92); }
+.event-banner__badges .badge-green { background: rgba(22, 163, 74, 0.92); }
+.event-banner__badges .badge-red { background: rgba(220, 38, 38, 0.92); }
+
+.event-banner__content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-banner__category {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  align-self: flex-start;
+}
+
+.event-banner__title {
+  font-size: 40px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  text-shadow: 0 4px 24px rgba(2, 6, 23, 0.5);
+  margin: 0;
+}
+
+.event-banner__sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.event-banner__sub-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 720px) {
+  .event-banner {
+    min-height: 280px;
+    padding: 22px 20px;
+  }
+  .event-banner__title { font-size: 28px; }
+}
+
+/* ── Countdown strip ────────────────────────────────────────────── */
+.event-countdown-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 24px;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.07) 0%, rgba(168, 85, 247, 0.04) 100%);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.14);
+  flex-wrap: wrap;
+}
+
+.event-countdown-strip__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.event-countdown-strip__title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(139, 92, 246, 0.9);
+}
+
+.event-countdown-strip__sub {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-default);
+}
+
+/* ── Quick meta grid ────────────────────────────────────────────── */
+.event-quick-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 20px;
+  background: rgba(248, 250, 252, 0.5);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.event-quick-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  transition: all var(--transition-fast);
+}
+
+.event-quick-card:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.06);
+}
+
+.event-quick-card__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.event-quick-card__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.event-quick-card__label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.event-quick-card__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .event-hero {
@@ -204,7 +403,82 @@
 }
 
 .event-details-below {
-  padding: 18px;
+  padding: 22px;
+}
+
+.event-section-card {
+  padding: 22px 24px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.04);
+}
+
+/* Make .event-section-card override the shell's .card flatten rule
+   if the consumer ever combines both classes. */
+.event-detail-shell .event-section-card {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 22px 24px;
+}
+
+/* QR code hover overlay */
+.event-qr-wrap {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.event-qr-wrap .event-qr-hover {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.60);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.event-qr-wrap:hover .event-qr-hover {
+  opacity: 1;
+}
+
+.event-qr-hover span {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.event-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 14px;
+  letter-spacing: -0.01em;
+}
+
+.event-section-title__bar {
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #8b5cf6, #22d3ee);
+}
+
+.event-description {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text-default);
+  white-space: pre-wrap;
 }
 
 /* Inside the shell, remove the “separate card” feel */

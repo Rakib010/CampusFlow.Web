@@ -10,7 +10,6 @@ import { eventsService } from '../../services/events.service.js';
 import { volunteersService } from '../../services/volunteers.service.js';
 import { ticketsService } from '../../services/tickets.service.js';
 import { attendanceService } from '../../services/attendance.service.js';
-import { certificatesService } from '../../services/certificates.service.js';
 import { feedbackService } from '../../services/feedback.service.js';
 import useToastStore from '../../stores/useToastStore.js';
 import Icon from '../../components/ui/Icon.jsx';
@@ -113,7 +112,6 @@ const TABS = [
   { key: 'volunteers', label: 'Volunteers' },
   { key: 'tickets', label: 'Tickets' },
   { key: 'attendance', label: 'Attendance' },
-  { key: 'certificates', label: 'Certificates' },
 ];
 
 function fmtDate(d) {
@@ -366,9 +364,30 @@ function TicketsTab({ eventId }) {
   const [sold, setSold] = useState([]);
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [loadingSold, setLoadingSold] = useState(true);
+  const [selectedTickets, setSelectedTickets] = useState(new Set());
+  const [bulking, setBulking] = useState(false);
+  const [rejectConfirm, setRejectConfirm] = useState(null);
+  const [bulkRejectConfirm, setBulkRejectConfirm] = useState(false);
+  const [reapplyDetail, setReapplyDetail] = useState(null);
+  const [ticketSearch, setTicketSearch] = useState('');
+  const [ticketStatusFilter, setTicketStatusFilter] = useState('');
+  const [ticketSort, setTicketSort] = useState('newest');
   const [typeModal, setTypeModal] = useState(false);
+  const [editingTypeId, setEditingTypeId] = useState(null);
   const [typeForm, setTypeForm] = useState({ name: 'General', price: '', totalQuantity: '', description: '' });
   const [savingType, setSavingType] = useState(false);
+
+  const openAddModal = () => {
+    setEditingTypeId(null);
+    setTypeForm({ name: 'General', price: '', totalQuantity: '', description: '' });
+    setTypeModal(true);
+  };
+
+  const openEditModal = (t) => {
+    setEditingTypeId(t.id);
+    setTypeForm({ name: t.name, price: String(t.price), totalQuantity: String(t.quantity ?? ''), description: t.description || '' });
+    setTypeModal(true);
+  };
 
   const loadTypes = () => {
     setLoadingTypes(true);
@@ -388,24 +407,31 @@ function TicketsTab({ eventId }) {
 
   useEffect(() => { loadTypes(); loadSold(); }, [eventId]);
 
-  const handleCreateType = async (e) => {
+  const handleSaveType = async (e) => {
     e.preventDefault();
     if (!typeForm.price) { useToastStore.getState().error('Price is required.'); return; }
+    if (!typeForm.totalQuantity) { useToastStore.getState().error('Quantity is required.'); return; }
     setSavingType(true);
+    const payload = {
+      name: typeForm.name,
+      price: parseFloat(typeForm.price),
+      quantity: parseInt(typeForm.totalQuantity),
+      description: typeForm.description || undefined,
+    };
     try {
-      if (!typeForm.totalQuantity) { useToastStore.getState().error('Quantity is required.'); setSavingType(false); return; }
-      await ticketsService.createTicketType(eventId, {
-        name: typeForm.name,
-        price: parseFloat(typeForm.price),
-        quantity: parseInt(typeForm.totalQuantity),
-        description: typeForm.description || undefined,
-      });
-      useToastStore.getState().success('Ticket type created.');
+      if (editingTypeId) {
+        await ticketsService.updateTicketType(editingTypeId, payload);
+        useToastStore.getState().success('Ticket type updated.');
+      } else {
+        await ticketsService.createTicketType(eventId, payload);
+        useToastStore.getState().success('Ticket type created.');
+      }
       setTypeModal(false);
+      setEditingTypeId(null);
       setTypeForm({ name: 'General', price: '', totalQuantity: '', description: '' });
       loadTypes();
     } catch (e) {
-      useToastStore.getState().error(e.response?.data?.message || 'Failed to create ticket type.');
+      useToastStore.getState().error(e.response?.data?.message || 'Failed to save ticket type.');
     } finally { setSavingType(false); }
   };
 
@@ -419,15 +445,76 @@ function TicketsTab({ eventId }) {
     }
   };
 
-  const handleConfirmCash = async (id) => {
+  const handleConfirm = async (id) => {
     try {
       await ticketsService.confirmCashPayment(id);
-      useToastStore.getState().success('Cash payment confirmed.');
+      useToastStore.getState().success('Ticket confirmed.');
       loadSold();
     } catch (e) {
       useToastStore.getState().error(e.response?.data?.message || 'Failed to confirm.');
     }
   };
+
+  const handleReject = async (id) => {
+    try {
+      await ticketsService.rejectPayment(id);
+      useToastStore.getState().success('Ticket rejected.');
+      loadSold();
+    } catch (e) {
+      useToastStore.getState().error(e.response?.data?.message || 'Failed to reject.');
+    }
+  };
+
+  const handleBulk = async (action) => {
+    if (!selectedTickets.size) return;
+    setBulking(true);
+    try {
+      await ticketsService.bulkAction([...selectedTickets], action);
+      useToastStore.getState().success(`${selectedTickets.size} ticket(s) ${action}ed.`);
+      setSelectedTickets(new Set());
+      loadSold();
+    } catch (e) {
+      useToastStore.getState().error(e.response?.data?.message || `Bulk ${action} failed.`);
+    } finally { setBulking(false); }
+  };
+
+  const toggleTicket = (id) => setSelectedTickets((prev) => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const pendingTickets = sold.filter((t) => t.payment_status === 'pending' || t.payment_status === 'reapplied');
+  const allPendingSelected = pendingTickets.length > 0 && pendingTickets.every((t) => selectedTickets.has(t.id));
+
+  const toggleAllPending = () => {
+    if (allPendingSelected) {
+      setSelectedTickets(new Set());
+    } else {
+      setSelectedTickets(new Set(pendingTickets.map((t) => t.id)));
+    }
+  };
+
+  const filteredSold = sold
+    .filter((t) => {
+      if (ticketStatusFilter && t.payment_status !== ticketStatusFilter) return false;
+      if (ticketSearch) {
+        const q = ticketSearch.toLowerCase();
+        const hay = `${t.full_name || ''} ${t.buyer_name || ''} ${t.email || ''} ${t.buyer_email || ''} ${t.short_code || ''} ${t.ticket_type_name || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (ticketSort === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+      if (ticketSort === 'status') return (a.payment_status || '').localeCompare(b.payment_status || '');
+      if (ticketSort === 'buyer') {
+        const na = a.full_name || a.buyer_name || a.email || '';
+        const nb = b.full_name || b.buyer_name || b.email || '';
+        return na.localeCompare(nb);
+      }
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -438,7 +525,7 @@ function TicketsTab({ eventId }) {
             <div className="card-title">Ticket Types</div>
             <div className="card-subtitle">General, Student, Guest, VIP tiers</div>
           </div>
-          <button className="btn btn-primary btn-sm" onClick={() => setTypeModal(true)}>+ Add Type</button>
+          <button className="btn btn-primary btn-sm" onClick={openAddModal}>+ Add Type</button>
         </div>
         {loadingTypes ? <PageSpinner /> : types.length === 0 ? (
           <div className="empty-state">
@@ -450,16 +537,18 @@ function TicketsTab({ eventId }) {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Type</th><th>Price</th><th>Qty Available</th><th>Sold</th><th>Action</th></tr>
+                <tr><th>Type</th><th>Price</th><th>Total</th><th>Remaining</th><th>Sold</th><th>Action</th></tr>
               </thead>
               <tbody>
                 {types.map((t) => (
                   <tr key={t.id}>
                     <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{t.name}</td>
                     <td>{Number(t.price || 0).toFixed(2)} ৳</td>
-                    <td>{t.available_quantity != null ? `${t.available_quantity} / ${t.quantity}` : (t.quantity ?? 'Unlimited')}</td>
+                    <td>{t.quantity ?? '∞'}</td>
+                    <td>{t.available_quantity ?? '∞'}</td>
                     <td>{t.quantity != null && t.available_quantity != null ? (t.quantity - t.available_quantity) : (t.sold_count ?? 0)}</td>
-                    <td>
+                    <td style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => openEditModal(t)}>Edit</button>
                       <button className="btn btn-danger btn-sm" onClick={() => handleDeleteType(t.id)}>Delete</button>
                     </td>
                   </tr>
@@ -473,8 +562,25 @@ function TicketsTab({ eventId }) {
       {/* Sold Tickets */}
       <div className="card">
         <div className="card-header">
-          <div className="card-title">Sold Tickets</div>
-          <div className="card-subtitle">{sold.length} tickets sold</div>
+          <div>
+            <div className="card-title">Sold Tickets</div>
+            <div className="card-subtitle">
+              {filteredSold.length !== sold.length
+                ? `${filteredSold.length} of ${sold.length} ticket${sold.length !== 1 ? 's' : ''}`
+                : `${sold.length} ticket${sold.length !== 1 ? 's' : ''} sold`}
+            </div>
+          </div>
+          {selectedTickets.size > 0 && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{selectedTickets.size} selected</span>
+              <button className="btn btn-success btn-sm" onClick={() => handleBulk('confirm')} disabled={bulking}>
+                {bulking ? 'Working…' : 'Confirm All'}
+              </button>
+              <button className="btn btn-danger btn-sm" onClick={() => setBulkRejectConfirm(true)} disabled={bulking}>
+                Reject All
+              </button>
+            </div>
+          )}
         </div>
         {loadingSold ? <PageSpinner /> : sold.length === 0 ? (
           <div className="empty-state">
@@ -482,10 +588,56 @@ function TicketsTab({ eventId }) {
             <div className="empty-state-title">No tickets sold yet</div>
           </div>
         ) : (
+          <>
+            <div className="filter-bar" style={{ marginBottom: 12 }}>
+              <div className="search-wrap" style={{ flex: 1, minWidth: 180 }}>
+                <span className="search-icon"><Icon name="search" size={14} /></span>
+                <input
+                  className="input-field search-input"
+                  placeholder="Search buyer, email, code…"
+                  value={ticketSearch}
+                  onChange={(e) => setTicketSearch(e.target.value)}
+                />
+              </div>
+              <select
+                className="input-field select-field"
+                style={{ width: 150 }}
+                value={ticketStatusFilter}
+                onChange={(e) => setTicketStatusFilter(e.target.value)}
+              >
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="rejected">Rejected</option>
+                <option value="reapplied">Reapplied</option>
+              </select>
+              <select
+                className="input-field select-field"
+                style={{ width: 150 }}
+                value={ticketSort}
+                onChange={(e) => setTicketSort(e.target.value)}
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="status">By status</option>
+                <option value="buyer">By buyer</option>
+              </select>
+            </div>
+            {filteredSold.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon" style={{ color: 'var(--text-muted)' }}><Icon name="search" size={32} strokeWidth={1.4} /></div>
+                <div className="empty-state-title">No tickets match</div>
+                <div className="empty-state-desc">Try adjusting your search or filters.</div>
+              </div>
+            ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
+                  <th style={{ width: 36 }}>
+                    <input type="checkbox" checked={allPendingSelected} onChange={toggleAllPending}
+                      title="Select all pending" style={{ cursor: 'pointer' }} />
+                  </th>
                   <th>Buyer</th>
                   <th>Code</th>
                   <th>Type</th>
@@ -497,28 +649,33 @@ function TicketsTab({ eventId }) {
                 </tr>
               </thead>
               <tbody>
-                {sold.map((t) => {
+                {filteredSold.map((t) => {
                   const buyerName = t.full_name || t.buyer_name;
                   const buyerEmail = t.email || t.buyer_email;
                   const purchased = t.created_at || t.purchased_at;
+                  const isPending = t.payment_status === 'pending';
+                  const isActionable = isPending || t.payment_status === 'reapplied';
                   return (
-                    <tr key={t.id}>
+                    <tr
+                      key={t.id}
+                      style={{ background: selectedTickets.has(t.id) ? 'rgba(139,92,246,0.04)' : undefined, cursor: 'pointer' }}
+                      onClick={() => setReapplyDetail(t)}
+                    >
+                      <td onClick={(e) => e.stopPropagation()}>
+                        {isActionable && (
+                          <input type="checkbox" checked={selectedTickets.has(t.id)}
+                            onChange={() => toggleTicket(t.id)} style={{ cursor: 'pointer' }} />
+                        )}
+                      </td>
                       <td>
                         <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{buyerName || buyerEmail || '—'}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{buyerEmail}</div>
                       </td>
                       <td>
                         {t.short_code ? (
-                          <span style={{
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                            color: 'var(--accent)',
-                            background: 'rgba(34,211,238,0.08)',
-                            padding: '3px 7px',
-                            borderRadius: 4,
-                            letterSpacing: '0.04em',
-                            whiteSpace: 'nowrap',
-                          }}>{t.short_code}</span>
+                          <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--accent)', background: 'rgba(139,92,246,0.08)', padding: '3px 7px', borderRadius: 4, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                            {t.short_code}
+                          </span>
                         ) : '—'}
                       </td>
                       <td style={{ fontSize: 13 }}>{t.ticket_type_name || '—'}</td>
@@ -526,21 +683,25 @@ function TicketsTab({ eventId }) {
                         <Badge label={t.payment_type || 'cash'} color={t.payment_type === 'online' ? 'cyan' : 'amber'} />
                       </td>
                       <td>
-                        {t.payment_reference ? (
-                          <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-default)', userSelect: 'all' }}>
-                            {t.payment_reference}
-                          </span>
-                        ) : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>}
+                        {t.payment_reference
+                          ? <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-default)', userSelect: 'all' }}>{t.payment_reference}</span>
+                          : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>}
                       </td>
-                      <td>
-                        <Badge label={t.payment_status || 'pending'} color={t.payment_status === 'confirmed' ? 'green' : 'amber'} />
-                      </td>
+                      <td><Badge label={t.payment_status || 'pending'} /></td>
                       <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{fmtDate(purchased)}</td>
-                      <td>
-                        {t.payment_status !== 'confirmed' && (
-                          <button className="btn btn-success btn-sm" onClick={() => handleConfirmCash(t.id)}>
-                            Confirm
-                          </button>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        {isActionable ? (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn btn-success btn-sm" onClick={() => handleConfirm(t.id)}>Confirm</button>
+                            <button className="btn btn-danger btn-sm" onClick={() => setRejectConfirm(t.id)}>Reject</button>
+                          </div>
+                        ) : (
+                          <span
+                            style={{ fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none' }}
+                            onClick={() => setReapplyDetail(t)}
+                          >
+                            View
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -549,16 +710,111 @@ function TicketsTab({ eventId }) {
               </tbody>
             </table>
           </div>
+            )}
+          </>
         )}
       </div>
 
+      {/* Ticket detail modal (all rows) */}
+      {reapplyDetail && (() => {
+        const t = reapplyDetail;
+        const isActionable = t.payment_status === 'pending' || t.payment_status === 'reapplied';
+        const isReapplied = t.payment_status === 'reapplied';
+        return (
+          <div className="modal-overlay" onClick={() => setReapplyDetail(null)}>
+            <div className="modal" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+              <div className="card-header">
+                <div>
+                  <div className="card-title">Ticket Details</div>
+                  <div className="card-subtitle">{t.full_name || t.email}</div>
+                </div>
+                <button className="btn btn-ghost btn-sm" onClick={() => setReapplyDetail(null)}><Icon name="x" size={14} /></button>
+              </div>
+
+              {/* Base info grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 14 }}>
+                {[
+                  ['Buyer', t.full_name || '—'],
+                  ['Email', t.email || '—'],
+                  ['Ticket type', t.ticket_type_name || '—'],
+                  ['Status', <Badge key="s" label={t.payment_status || 'pending'} />],
+                  ['Payment method', t.payment_type || '—'],
+                  ['Transaction ID', t.payment_reference || '—'],
+                  ['Ticket code', t.short_code || '—'],
+                  ['Purchased', t.created_at ? new Date(t.created_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—'],
+                ].map(([label, val]) => (
+                  <div key={label} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-default)', fontFamily: label === 'Transaction ID' || label === 'Ticket code' ? 'monospace' : undefined, wordBreak: 'break-all' }}>{val}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Reapplication section */}
+              {isReapplied && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px' }}>
+                    {[
+                      ['New provider', t.reapply_payment_provider || '—'],
+                      ['New TrxID', t.reapply_payment_reference || '—'],
+                      ['Reapplied at', t.reapply_at ? new Date(t.reapply_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—'],
+                    ].map(([label, val]) => (
+                      <div key={label} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-default)', fontFamily: label.includes('TrxID') ? 'monospace' : undefined, wordBreak: 'break-all' }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                    <div style={{ fontSize: 11, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Reason from attendee</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-default)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      {t.reapply_reason || '—'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => setReapplyDetail(null)}>Close</button>
+                {isActionable && (
+                  <>
+                    <button className="btn btn-danger btn-sm" onClick={() => { setRejectConfirm(t.id); setReapplyDetail(null); }}>Reject</button>
+                    <button className="btn btn-success btn-sm" onClick={async () => { await handleConfirm(t.id); setReapplyDetail(null); }}>Confirm</button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Reject confirmation modals */}
+      <ConfirmModal
+        isOpen={!!rejectConfirm}
+        onClose={() => setRejectConfirm(null)}
+        onConfirm={async () => { const id = rejectConfirm; setRejectConfirm(null); await handleReject(id); }}
+        title="Reject this ticket?"
+        message="The attendee's payment will be marked as not confirmed and they will be notified by email. This cannot be undone."
+        confirmText="Reject"
+        danger
+      />
+      <ConfirmModal
+        isOpen={bulkRejectConfirm}
+        onClose={() => setBulkRejectConfirm(false)}
+        onConfirm={async () => { setBulkRejectConfirm(false); await handleBulk('reject'); }}
+        title={`Reject ${selectedTickets.size} ticket${selectedTickets.size !== 1 ? 's' : ''}?`}
+        message="All selected attendees will be notified by email that their payment could not be confirmed."
+        confirmText="Reject All"
+        danger
+      />
+
       {/* Type Modal */}
-      <Modal isOpen={typeModal} onClose={() => setTypeModal(false)} title="Add Ticket Type"
+      <Modal isOpen={typeModal} onClose={() => setTypeModal(false)} title={editingTypeId ? 'Edit Ticket Type' : 'Add Ticket Type'}
         footer={
           <>
             <button className="btn btn-secondary btn-sm" onClick={() => setTypeModal(false)}>Cancel</button>
-            <button className="btn btn-primary btn-sm" onClick={handleCreateType} disabled={savingType}>
-              {savingType ? <Spinner size="sm" /> : 'Create'}
+            <button className="btn btn-primary btn-sm" onClick={handleSaveType} disabled={savingType}>
+              {savingType ? <Spinner size="sm" /> : editingTypeId ? 'Save Changes' : 'Create'}
             </button>
           </>
         }
@@ -578,8 +834,27 @@ function TicketsTab({ eventId }) {
           </div>
           <div className="input-wrap">
             <label className="input-label">Total Quantity</label>
-            <input type="number" min="1" className="input-field" placeholder="Leave blank for unlimited"
-              value={typeForm.totalQuantity} onChange={(e) => setTypeForm((f) => ({ ...f, totalQuantity: e.target.value }))} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button type="button"
+                onClick={() => setTypeForm((f) => ({ ...f, totalQuantity: Math.max(1, (parseInt(f.totalQuantity) || 1) - 1) }))}
+                style={{ width: 36, height: 36, borderRadius: '50%', border: '1.5px solid var(--border-soft)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 18, fontWeight: 400, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'border-color 0.15s, background 0.15s' }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-soft)'; e.currentTarget.style.color = 'var(--text-primary)'; }}>
+                −
+              </button>
+              <input type="number" min="1" className="input-field"
+                style={{ textAlign: 'center', flex: 1, fontWeight: 600, fontSize: 16 }}
+                placeholder="∞"
+                value={typeForm.totalQuantity}
+                onChange={(e) => setTypeForm((f) => ({ ...f, totalQuantity: e.target.value }))} />
+              <button type="button"
+                onClick={() => setTypeForm((f) => ({ ...f, totalQuantity: (parseInt(f.totalQuantity) || 0) + 1 }))}
+                style={{ width: 36, height: 36, borderRadius: '50%', border: '1.5px solid var(--border-soft)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 18, fontWeight: 400, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'border-color 0.15s, background 0.15s' }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-soft)'; e.currentTarget.style.color = 'var(--text-primary)'; }}>
+                +
+              </button>
+            </div>
           </div>
           <div className="input-wrap">
             <label className="input-label">Description</label>
@@ -1412,86 +1687,6 @@ function AttendeeDetailModal({ record, onClose, onCheckOut, onCheckIn }) {
   );
 }
 
-// ── Certificates Tab ───────────────────────────────────────────────────────────
-function CertificatesTab({ eventId }) {
-  const [volunteers, setVolunteers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-
-  useEffect(() => {
-    volunteersService.getApplications(eventId)
-      .then((r) => setVolunteers((r.data || []).filter((a) => a.status === 'approved')))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [eventId]);
-
-  const handleGenerate = async (volunteerId, name) => {
-    try {
-      await certificatesService.generateForVolunteer(eventId, volunteerId);
-      useToastStore.getState().success(`Certificate generated for ${name}.`);
-    } catch (e) {
-      useToastStore.getState().error(e.response?.data?.message || 'Failed to generate.');
-    }
-  };
-
-  const handleBulkGenerate = async () => {
-    setGenerating(true);
-    try {
-      const r = await certificatesService.generateBulk(eventId);
-      useToastStore.getState().success(`Bulk generation complete: ${r.data?.generated ?? 0} certificates.`);
-    } catch (e) {
-      useToastStore.getState().error(e.response?.data?.message || 'Bulk generation failed.');
-    } finally { setGenerating(false); }
-  };
-
-  return (
-    <div className="card">
-      <div className="card-header">
-        <div>
-          <div className="card-title">Volunteer Certificates</div>
-          <div className="card-subtitle">Generate certificates for approved volunteers</div>
-        </div>
-        <button className="btn btn-primary btn-sm" onClick={handleBulkGenerate} disabled={generating || volunteers.length === 0}>
-          {generating ? <Spinner size="sm" /> : 'Bulk Generate All'}
-        </button>
-      </div>
-
-      {loading ? <PageSpinner /> : volunteers.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon" style={{ color: "var(--text-muted)" }}><Icon name="award" size={40} strokeWidth={1.4} /></div>
-          <div className="empty-state-title">No approved volunteers</div>
-          <div className="empty-state-desc">Approve volunteer applications first.</div>
-        </div>
-      ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Volunteer</th><th>Role</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-              {volunteers.map((v) => (
-                <tr key={v.id}>
-                  <td>
-                    <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{v.volunteer_name || v.volunteer_email || '—'}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{v.volunteer_email}</div>
-                  </td>
-                  <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{v.role_name || '—'}</td>
-                  <td>
-                    <button className="btn btn-success btn-sm"
-                      onClick={() => handleGenerate(v.volunteer_id || v.user_id, v.volunteer_name)}>
-                      Generate
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function EventManagePage() {
   const { id } = useParams();
@@ -1520,12 +1715,14 @@ export default function EventManagePage() {
       <div className="page-content">
         <div className="page-header">
           <div>
-            <div className="page-title">Manage: {event?.title || ''}</div>
-            <div className="page-subtitle">Volunteers · Tickets · Attendance · Certificates</div>
+            <div className="page-title">{event?.title || ''}</div>
+            <div className="page-subtitle">Volunteers · Tickets · Attendance</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-          <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/events/${id}`)}>← Back to Event</button>
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/events/${id}`)}>
+            <Icon name="arrowLeft" size={14} /> Back to Event
+          </button>
         </div>
 
         {/* Tabs */}
@@ -1550,7 +1747,6 @@ export default function EventManagePage() {
         {tab === 'volunteers' && <VolunteersTab eventId={id} eventStatus={event?.status} />}
         {tab === 'tickets' && <TicketsTab eventId={id} />}
         {tab === 'attendance' && <AttendanceTab eventId={id} />}
-        {tab === 'certificates' && <CertificatesTab eventId={id} />}
       </div>
     </>
   );

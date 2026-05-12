@@ -5,6 +5,8 @@
 /* ── Topbar ──────────────────────────────────────────────────────────────── */
 
 .topbar {
+  position: relative;
+  z-index: 200;
   height: var(--topbar-height);
   display: flex;
   align-items: center;

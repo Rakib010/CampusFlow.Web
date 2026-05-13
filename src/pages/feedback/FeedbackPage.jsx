@@ -100,99 +100,6 @@ function RatingFeedCard({ rating }) {
   );
 }
 
-/* ── Leaderboard ─────────────────────────────────────────────────────── */
-function LbPodiumItem({ rank, item }) {
-  const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
-  const rankLabel = { 1: '1st', 2: '2nd', 3: '3rd' };
-
-  if (!item) {
-    return (
-      <div className={`fb-lb-podium-item fb-lb-podium-item--${rank}`}>
-        <div className="fb-lb-podium-medal" style={{ opacity: 0.25 }}>{medals[rank]}</div>
-        <div className="fb-lb-podium-avatar" style={{ opacity: 0.18, background: 'rgba(15,23,42,0.08)', border: '2px dashed rgba(15,23,42,0.15)' }}>
-          <span style={{ fontSize: rank === 1 ? 20 : 16, color: 'rgba(15,23,42,0.3)' }}>{rankLabel[rank]}</span>
-        </div>
-        <div className="fb-lb-podium-name" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>—</div>
-        <div className="fb-lb-podium-score" style={{ color: 'var(--text-muted)' }}>—</div>
-        <div className="fb-lb-podium-block" style={{ opacity: 0.18 }} />
-      </div>
-    );
-  }
-
-  const words = (item.full_name || 'Unknown').split(' ');
-  const displayName = words.length >= 2 ? `${words[0]} ${words[1]}` : words[0];
-
-  return (
-    <div className={`fb-lb-podium-item fb-lb-podium-item--${rank}`}>
-      <div className="fb-lb-podium-medal">{medals[rank]}</div>
-      <div className="fb-lb-podium-avatar">
-        {item.photo_url ? <img src={item.photo_url} alt={item.full_name} /> : initials(item.full_name)}
-      </div>
-      <div className="fb-lb-podium-name">{displayName}</div>
-      <div className="fb-lb-podium-score">{parseFloat(item.avg_rating).toFixed(1)}</div>
-      <div className="fb-lb-podium-block" />
-    </div>
-  );
-}
-
-function LbRow({ rank, item }) {
-  return (
-    <div className="fb-lb-row">
-      <div className="fb-lb-rank">{rank}</div>
-      <div className="fb-lb-avatar">
-        {item.photo_url ? <img src={item.photo_url} alt={item.full_name} /> : initials(item.full_name)}
-      </div>
-      <div className="fb-lb-info">
-        <div className="fb-lb-name">{item.full_name || 'Unknown'}</div>
-        <div className="fb-lb-dept">{item.department || item.batch || 'Volunteer'}</div>
-        <div className="fb-lb-bar">
-          <div className="fb-lb-bar__fill" style={{ width: `${(item.avg_rating / 5) * 100}%` }} />
-        </div>
-      </div>
-      <div className="fb-lb-score">
-        <div className="fb-lb-score__val">{item.avg_rating}</div>
-        <div className="fb-lb-score__count">{item.total_ratings}×</div>
-      </div>
-    </div>
-  );
-}
-
-function Leaderboard({ data, currentUserId }) {
-  const podium = data.slice(0, 3);
-  const rest = data.slice(3);
-  const myRank = currentUserId ? data.findIndex((d) => d.volunteer_id === currentUserId) + 1 : 0;
-  return (
-    <div className="fb-lb">
-      <div className="fb-lb-header">
-        <div className="fb-lb-header__icon">🏆</div>
-        <div>
-          <div className="fb-lb-header__title">Volunteer Leaderboard</div>
-          <div className="fb-lb-header__sub">
-            {myRank > 0 ? `You're ranked #${myRank} on campus` : 'Top rated volunteers on campus'}
-          </div>
-        </div>
-      </div>
-      {data.length === 0 ? (
-        <div className="fb-lb-empty">No volunteer ratings yet.</div>
-      ) : (
-        <>
-          <div className="fb-lb-podium">
-            {[1, 2, 0].map((idx) => (
-              <LbPodiumItem key={idx} rank={idx + 1} item={podium[idx] ?? null} />
-            ))}
-          </div>
-          <div className="fb-lb-divider" />
-          {rest.length > 0 && (
-            <div className="fb-lb-list">
-              {rest.map((item, i) => <LbRow key={item.volunteer_id} rank={i + 4} item={item} />)}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
 /* ── Volunteer card ──────────────────────────────────────────────────── */
 function VolunteerCard({ volunteer, onRate, roleName }) {
   const hasRating = volunteer.total_ratings > 0;
@@ -602,7 +509,6 @@ export default function FeedbackPage() {
   const [avgRating, setAvgRating]     = useState(0);
   const [pastEvents, setPastEvents]   = useState([]);
   const [volunteers, setVolunteers]   = useState([]);
-  const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading]         = useState(true);
 
   const [ratingVolunteer, setRatingVolunteer] = useState(null);
@@ -611,11 +517,9 @@ export default function FeedbackPage() {
     setLoading(true);
     try {
       if (isVolunteer) {
-        const [lbRes, ratingsRes] = await Promise.allSettled([
-          feedbackService.getLeaderboard(10),
+        const ratingsRes = await Promise.allSettled([
           feedbackService.getMyVolunteerRatings(),
-        ]);
-        setLeaderboard(lbRes.status === 'fulfilled' ? (Array.isArray(lbRes.value) ? lbRes.value : lbRes.value?.data || []) : []);
+        ]).then((arr) => arr[0]);
         if (ratingsRes.status === 'fulfilled') {
           const v = ratingsRes.value;
           const inner = v?.data ?? v;
@@ -623,12 +527,10 @@ export default function FeedbackPage() {
           setAvgRating(inner?.avgRating || 0);
         }
       } else {
-        const [lbRes, volRes, evtRes] = await Promise.allSettled([
-          feedbackService.getLeaderboard(10),
+        const [volRes, evtRes] = await Promise.allSettled([
           feedbackService.listVolunteers(),
           eventsService.listEvents({ status: 'completed', limit: 50, page: 1 }),
         ]);
-        setLeaderboard(lbRes.status === 'fulfilled' ? (Array.isArray(lbRes.value) ? lbRes.value : lbRes.value?.data || []) : []);
         if (volRes.status === 'fulfilled') {
           const v = volRes.value;
           setVolunteers(Array.isArray(v) ? v : v?.data || []);
@@ -691,27 +593,22 @@ export default function FeedbackPage() {
                   </div>
                 </div>
               </div>
-              <div className="fb-grid">
-                <div className="fb-main">
-                  <div className="fb-section">
-                    <div className="fb-section-head">
-                      <div className="fb-section-title"><div className="fb-section-bar" />Received Ratings</div>
-                      <div className="fb-count-badge">{myRatings.length}</div>
-                    </div>
-                    {myRatings.length === 0 ? (
-                      <div className="fb-empty">
-                        <div className="fb-empty__icon"><Icon name="award" size={22} /></div>
-                        <div className="fb-empty__title">No ratings yet</div>
-                        <div className="fb-empty__sub">Participate in events and organizers will rate you here.</div>
-                      </div>
-                    ) : (
-                      <div className="fb-ratings-list">
-                        {myRatings.map((r, i) => <RatingFeedCard key={r.id || i} rating={r} />)}
-                      </div>
-                    )}
-                  </div>
+              <div className="fb-section">
+                <div className="fb-section-head">
+                  <div className="fb-section-title"><div className="fb-section-bar" />Received Ratings</div>
+                  <div className="fb-count-badge">{myRatings.length}</div>
                 </div>
-                <div><Leaderboard data={leaderboard} currentUserId={user?.id} /></div>
+                {myRatings.length === 0 ? (
+                  <div className="fb-empty">
+                    <div className="fb-empty__icon"><Icon name="award" size={22} /></div>
+                    <div className="fb-empty__title">No ratings yet</div>
+                    <div className="fb-empty__sub">Participate in events and organizers will rate you here.</div>
+                  </div>
+                ) : (
+                  <div className="fb-ratings-list">
+                    {myRatings.map((r, i) => <RatingFeedCard key={r.id || i} rating={r} />)}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -738,20 +635,12 @@ export default function FeedbackPage() {
         </div>
 
         {loading ? <PageSpinner /> : (
-          <div className="fb-grid" style={{ alignItems: 'start' }}>
-            {/* Left column */}
-            <div className="fb-main">
-              <VolunteersSection
-                allVolunteers={volunteers}
-                pastEvents={pastEvents}
-                onRate={setRatingVolunteer}
-                onReload={load}
-              />
-            </div>
-
-            {/* Leaderboard sidebar */}
-            <div><Leaderboard data={leaderboard} currentUserId={null} /></div>
-          </div>
+          <VolunteersSection
+            allVolunteers={volunteers}
+            pastEvents={pastEvents}
+            onRate={setRatingVolunteer}
+            onReload={load}
+          />
         )}
       </div>
 

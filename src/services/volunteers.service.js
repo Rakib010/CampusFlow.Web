@@ -30,4 +30,7 @@ export const volunteersService = {
 
   getResponsibilities: (eventId) =>
     api.get(`/volunteers/events/${eventId}/responsibilities`).then((r) => r.data),
+
+  setVolunteerHours: (eventId, volunteerId, hours) =>
+    api.put(`/volunteers/events/${eventId}/volunteers/${volunteerId}/hours`, { hours }).then((r) => r.data),
 };

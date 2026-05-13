@@ -16,6 +16,9 @@ export const feedbackService = {
   getVolunteerRatings: (volunteerId) =>
     api.get(`/feedback/volunteers/${volunteerId}/ratings`).then((r) => r.data),
 
+  getVolunteerProfile: (volunteerId) =>
+    api.get(`/feedback/volunteers/${volunteerId}/profile`).then((r) => r.data),
+
   getMyVolunteerRatings: () =>
     api.get('/feedback/volunteers/my/ratings').then((r) => r.data),
 

@@ -21,6 +21,12 @@ const navConfig = {
       ],
     },
     {
+      section: 'Community',
+      items: [
+        { to: '/leaderboard', icon: 'trophy', label: 'Leaderboard' },
+      ],
+    },
+    {
       section: 'Platform',
       items: [
         { to: '/profile', icon: 'user', label: 'My Profile' },
@@ -40,6 +46,7 @@ const navConfig = {
       section: 'Insights',
       items: [
         { to: '/feedback', icon: 'star', label: 'Feedback & Ratings' },
+        { to: '/leaderboard', icon: 'trophy', label: 'Leaderboard' },
       ],
     },
     {
@@ -62,6 +69,7 @@ const navConfig = {
       section: 'My Record',
       items: [
         { to: '/feedback', icon: 'star', label: 'My Ratings' },
+        { to: '/leaderboard', icon: 'trophy', label: 'Leaderboard' },
       ],
     },
     {
@@ -84,6 +92,7 @@ const navConfig = {
       section: 'Activity',
       items: [
         { to: '/feedback', icon: 'star', label: 'Feedback' },
+        { to: '/leaderboard', icon: 'trophy', label: 'Leaderboard' },
       ],
     },
     {
@@ -124,7 +133,7 @@ export default function Sidebar() {
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.to === '/dashboard' || item.to === '/events'}
+                end={item.to === '/dashboard' || item.to === '/events' || item.to === '/users'}
                 className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
               >
                 <span className="sidebar-item-icon"><Icon name={item.icon} size={17} /></span>

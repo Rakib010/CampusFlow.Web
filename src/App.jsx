@@ -26,6 +26,7 @@ import MyApplicationsPage from './pages/volunteers/MyApplicationsPage.jsx';
 import MyTicketsPage from './pages/tickets/MyTicketsPage.jsx';
 import EventManagePage from './pages/events/EventManagePage.jsx';
 import FeedbackPage from './pages/feedback/FeedbackPage.jsx';
+import LeaderboardPage from './pages/leaderboard/LeaderboardPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 // Global UI
@@ -84,6 +85,7 @@ export default function App() {
 
             {/* Shared routes — multiple roles */}
             <Route path="/feedback" element={<FeedbackPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
 
             {/* Admin only */}
             <Route element={<RequireRole roles={['ADMIN']} />}>

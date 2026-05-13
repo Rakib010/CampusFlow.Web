@@ -131,6 +131,9 @@ function VolunteersTab({ eventId, eventStatus }) {
   const [savingNeed, setSavingNeed] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
   const [ratingVolunteer, setRatingVolunteer] = useState(null); // { volunteerId, volunteerName }
+  const [hoursDraft, setHoursDraft] = useState({});         // { [appId]: '6.5' }
+  const [editingHoursIds, setEditingHoursIds] = useState(new Set()); // app ids in edit mode
+  const [savingHoursId, setSavingHoursId] = useState(null);
 
   const loadNeeds = () => {
     setLoadingNeeds(true);
@@ -208,9 +211,83 @@ function VolunteersTab({ eventId, eventStatus }) {
     }
   };
 
+  // Open / close edit-mode for a row's hours
+  const openHoursEdit = (app) => {
+    setEditingHoursIds((s) => new Set(s).add(app.id));
+    setHoursDraft((d) => ({
+      ...d,
+      [app.id]: app.hours_logged > 0 ? String(app.hours_logged) : '',
+    }));
+  };
+  const cancelHoursEdit = (app) => {
+    setEditingHoursIds((s) => { const n = new Set(s); n.delete(app.id); return n; });
+    setHoursDraft((d) => { const n = { ...d }; delete n[app.id]; return n; });
+  };
+  const closeHoursEdit = (appId) => {
+    setEditingHoursIds((s) => { const n = new Set(s); n.delete(appId); return n; });
+    setHoursDraft((d) => { const n = { ...d }; delete n[appId]; return n; });
+  };
+
+  // Dirty = currently in edit mode AND the draft differs from the saved value.
+  const isHoursDirty = (app) => {
+    if (!editingHoursIds.has(app.id)) return false;
+    const drafted = parseFloat(hoursDraft[app.id]);
+    const saved = parseFloat(app.hours_logged) || 0;
+    if (!Number.isFinite(drafted)) {
+      return saved > 0 && hoursDraft[app.id] !== String(saved);
+    }
+    return drafted !== saved;
+  };
+
+  const handleSaveHours = async (app) => {
+    const raw = hoursDraft[app.id] ?? String(app.hours_logged ?? '');
+    const hours = parseFloat(raw);
+    if (!Number.isFinite(hours) || hours < 0) {
+      useToastStore.getState().error('Enter a valid number of hours.');
+      return;
+    }
+    setSavingHoursId(app.id);
+    try {
+      await volunteersService.setVolunteerHours(eventId, app.volunteer_id, hours);
+      useToastStore.getState().success(`Hours saved: ${hours}h`);
+      closeHoursEdit(app.id);
+      loadApps();
+    } catch (e) {
+      useToastStore.getState().error(e.response?.data?.message || 'Failed to save hours.');
+    } finally {
+      setSavingHoursId(null);
+    }
+  };
+
+  // Save every row currently in edit mode that has a dirty change.
+  const [bulkSavingHours, setBulkSavingHours] = useState(false);
+  const handleSaveAllHours = async () => {
+    const dirty = applications.filter(isHoursDirty);
+    if (dirty.length === 0) return;
+    setBulkSavingHours(true);
+    let ok = 0, fail = 0;
+    for (const app of dirty) {
+      const hours = parseFloat(hoursDraft[app.id]);
+      if (!Number.isFinite(hours) || hours < 0) { fail++; continue; }
+      try {
+        await volunteersService.setVolunteerHours(eventId, app.volunteer_id, hours);
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setEditingHoursIds(new Set());
+    setHoursDraft({});
+    setBulkSavingHours(false);
+    loadApps();
+    if (fail === 0) useToastStore.getState().success(`Saved hours for ${ok} volunteer${ok === 1 ? '' : 's'}.`);
+    else useToastStore.getState().error(`${ok} saved, ${fail} failed.`);
+  };
+
   const filteredApps = filterStatus
     ? applications.filter((a) => a.status === filterStatus)
     : applications;
+  const dirtyHoursCount = applications.filter(isHoursDirty).length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -264,17 +341,29 @@ function VolunteersTab({ eventId, eventStatus }) {
             <div className="card-title">Applications</div>
             <div className="card-subtitle">{applications.length} total</div>
           </div>
-          <select
-            className="input-field select-field"
-            style={{ height: 36, width: 140, fontSize: 13 }}
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {dirtyHoursCount > 0 && (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleSaveAllHours}
+                disabled={bulkSavingHours}
+                style={{ fontSize: 13 }}
+              >
+                {bulkSavingHours ? 'Saving…' : `Save hours (${dirtyHoursCount})`}
+              </button>
+            )}
+            <select
+              className="input-field select-field"
+              style={{ height: 36, width: 140, fontSize: 13 }}
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
         </div>
 
         {loadingApps ? <PageSpinner /> : filteredApps.length === 0 ? (
@@ -287,7 +376,7 @@ function VolunteersTab({ eventId, eventStatus }) {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Volunteer</th><th>Role</th><th>Avg. Rating</th><th>Total Events</th><th>Status</th><th>Applied</th><th>Actions</th></tr>
+                <tr><th>Volunteer</th><th>Role</th><th>Avg. Rating</th><th>This Event</th><th>Total Events</th><th>Status</th><th>Applied</th><th>Hours</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {filteredApps.map((app) => (
@@ -309,11 +398,109 @@ function VolunteersTab({ eventId, eventStatus }) {
                         <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>No ratings</span>
                       )}
                     </td>
+                    <td style={{ fontSize: 13 }}>
+                      {app.event_rating_count > 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Icon name="starFilled" size={12} style={{ color: '#f59e0b' }} />
+                          <strong style={{ color: 'var(--text-primary)' }}>{Number(app.event_rating).toFixed(1)}</strong>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: 12, fontStyle: 'italic' }}>Not rated</span>
+                      )}
+                    </td>
                     <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{app.events_count || 0}</td>
                     <td>
                       <Badge label={app.status} color={app.status === 'approved' ? 'green' : app.status === 'rejected' ? 'red' : 'amber'} />
                     </td>
                     <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{fmtDate(app.applied_at || app.created_at)}</td>
+                    <td>
+                      {app.status === 'approved' && eventStatus === 'completed' ? (
+                        editingHoursIds.has(app.id) ? (
+                          // ── EDIT mode ─────────────────────────────────────
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.25"
+                              placeholder="e.g. 6.5"
+                              value={hoursDraft[app.id] ?? ''}
+                              onChange={(e) => setHoursDraft((d) => ({ ...d, [app.id]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') { e.preventDefault(); handleSaveHours(app); }
+                                if (e.key === 'Escape') { e.preventDefault(); cancelHoursEdit(app); }
+                              }}
+                              autoFocus
+                              className="input-field"
+                              style={{ width: 80, padding: '4px 8px', fontSize: 12 }}
+                            />
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => handleSaveHours(app)}
+                              disabled={savingHoursId === app.id || !isHoursDirty(app)}
+                              aria-label="Save hours"
+                              title="Save"
+                              style={{
+                                padding: '4px 8px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              {savingHoursId === app.id ? '…' : <Icon name="check" size={13} />}
+                            </button>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => cancelHoursEdit(app)}
+                              aria-label="Cancel"
+                              title="Cancel"
+                              style={{
+                                padding: '4px 8px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <Icon name="x" size={13} />
+                            </button>
+                          </div>
+                        ) : (
+                          // ── READ-ONLY mode ────────────────────────────────
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{
+                              display: 'inline-block',
+                              minWidth: 56,
+                              textAlign: 'right',
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: app.hours_logged > 0 ? 'var(--text-primary)' : 'var(--text-muted)',
+                              fontVariantNumeric: 'tabular-nums',
+                            }}>
+                              {app.hours_logged > 0 ? `${app.hours_logged} h` : '—'}
+                            </span>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => openHoursEdit(app)}
+                              aria-label={app.hours_logged > 0 ? 'Edit hours' : 'Set hours'}
+                              title={app.hours_logged > 0 ? 'Edit hours' : 'Set hours'}
+                              style={{
+                                padding: '4px 8px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <Icon name="edit" size={13} />
+                            </button>
+                          </div>
+                        )
+                      ) : app.status === 'approved' ? (
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {app.hours_logged > 0 ? `${app.hours_logged} h` : 'after event ends'}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+                      )}
+                    </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {app.status === 'pending' && (

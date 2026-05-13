@@ -10,10 +10,19 @@ import { authService } from '../../services/auth.service.js';
 import useAuthStore from '../../stores/useAuthStore.js';
 import useToastStore from '../../stores/useToastStore.js';
 
-const SKILLS = ['Technical', 'Design', 'Management', 'Marketing', 'Communication', 'Photography', 'Logistics', 'IT Support'];
-
 const isStaff = (role) => role === 'ADMIN';
 const isOrganizer = (role) => role === 'ORGANIZER';
+
+// IUS departments shown as short-form options in the profile dropdown.
+const DEPARTMENTS = [
+  { value: 'CSE', label: 'CSE — Computer Science and Engineering' },
+  { value: 'EEE', label: 'EEE — Electrical and Electronic Engineering' },
+  { value: 'TE',  label: 'TE — Textile Engineering' },
+  { value: 'BBA', label: 'BBA — Business Administration (Bachelor)' },
+  { value: 'MBA', label: 'MBA — Business Administration (Master)' },
+  { value: 'ENG', label: 'ENG — English' },
+  { value: 'NS',  label: 'NS — Natural Science' },
+];
 
 export default function ProfilePage() {
   const { user, fetchMe } = useAuthStore();
@@ -51,11 +60,34 @@ export default function ProfilePage() {
 
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  const toggleSkill = (s) => {
-    setForm((f) => ({
-      ...f,
-      skills: f.skills.includes(s) ? f.skills.filter((x) => x !== s) : [...f.skills, s],
-    }));
+  // Skill add/remove (free-form, volunteer-controlled)
+  const [addingSkill, setAddingSkill] = useState(false);
+  const [skillInput, setSkillInput] = useState('');
+
+  const addSkill = () => {
+    const trimmed = skillInput.trim();
+    if (!trimmed) return;
+    const exists = (form.skills || []).some((s) => s.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      useToastStore.getState().error('You already have that skill.');
+      return;
+    }
+    if (trimmed.length > 40) {
+      useToastStore.getState().error('Skill must be 40 characters or fewer.');
+      return;
+    }
+    setForm((f) => ({ ...f, skills: [...(f.skills || []), trimmed] }));
+    setSkillInput('');
+    setAddingSkill(false);
+  };
+
+  const removeSkill = (s) => {
+    setForm((f) => ({ ...f, skills: (f.skills || []).filter((x) => x !== s) }));
+  };
+
+  const cancelAddSkill = () => {
+    setAddingSkill(false);
+    setSkillInput('');
   };
 
   const handleSaveProfile = useCallback(async (e) => {
@@ -329,9 +361,24 @@ export default function ProfilePage() {
                           <div className="profile-kv-row">
                             <div className="profile-k">Department</div>
                             <div className="profile-v">
-                              {editSection === 'personal'
-                                ? <input name="department" className="input-field" value={form.department} onChange={handleChange} />
-                                : val(form.department)}
+                              {editSection === 'personal' ? (
+                                <select
+                                  name="department"
+                                  className="input-field select-field"
+                                  value={form.department || ''}
+                                  onChange={handleChange}
+                                >
+                                  <option value="">— Select department —</option>
+                                  {DEPARTMENTS.map((d) => (
+                                    <option key={d.value} value={d.value}>{d.label}</option>
+                                  ))}
+                                  {form.department && !DEPARTMENTS.some((d) => d.value === form.department) && (
+                                    <option value={form.department}>{form.department} (custom)</option>
+                                  )}
+                                </select>
+                              ) : (
+                                val(form.department)
+                              )}
                             </div>
                           </div>
                           {!organizer && (
@@ -371,28 +418,85 @@ export default function ProfilePage() {
                         : <div className="profile-v" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{val(form.bio)}</div>}
                     </div>
 
-                    {/* Skills — hidden for Admin/Super Admin */}
-                    {!staff && (
+                    {/* Skills — volunteers only, free-form */}
+                    {role === 'VOLUNTEER' && (
                       <div className="profile-section">
                         <div className="profile-section__head">
                           <div className="profile-section__title">Skills</div>
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Click to toggle</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                            {(form.skills || []).length} added
+                          </span>
                         </div>
-                        <div className="profile-skill-chips">
-                          {SKILLS.map((s) => {
-                            const active = form.skills?.includes(s);
-                            return (
+                        <div className="profile-skill-chips" style={{ alignItems: 'center' }}>
+                          {(form.skills || []).map((s) => (
+                            <span
+                              key={s}
+                              className="profile-skill-chip is-active"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                            >
+                              {s}
                               <button
-                                key={s}
                                 type="button"
-                                className={`profile-skill-chip is-editable${active ? ' is-active' : ''}`}
-                                onClick={() => toggleSkill(s)}
+                                onClick={() => removeSkill(s)}
+                                aria-label={`Remove ${s}`}
+                                style={{
+                                  background: 'none', border: 'none', cursor: 'pointer',
+                                  color: 'inherit', opacity: 0.7, padding: 0,
+                                  display: 'inline-flex', alignItems: 'center',
+                                }}
                               >
-                                {s}
+                                <Icon name="x" size={11} />
                               </button>
-                            );
-                          })}
+                            </span>
+                          ))}
+
+                          {addingSkill ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <input
+                                type="text"
+                                value={skillInput}
+                                onChange={(e) => setSkillInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') { e.preventDefault(); addSkill(); }
+                                  if (e.key === 'Escape') { e.preventDefault(); cancelAddSkill(); }
+                                }}
+                                autoFocus
+                                placeholder="e.g. Public speaking"
+                                maxLength={40}
+                                style={{
+                                  padding: '6px 12px', fontSize: 12,
+                                  border: '1px solid var(--accent)',
+                                  borderRadius: 999, outline: 'none',
+                                  minWidth: 160, background: 'white',
+                                  color: 'var(--text-primary)',
+                                }}
+                              />
+                              <button
+                                type="button" onClick={addSkill}
+                                className="btn btn-primary btn-sm"
+                                style={{ padding: '4px 12px', fontSize: 11 }}
+                              >Add</button>
+                              <button
+                                type="button" onClick={cancelAddSkill}
+                                className="btn btn-ghost btn-sm"
+                                style={{ padding: '4px 10px', fontSize: 11 }}
+                              >Cancel</button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setAddingSkill(true)}
+                              className="profile-skill-chip is-editable"
+                              style={{
+                                borderStyle: 'dashed', cursor: 'pointer',
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                              }}
+                            >
+                              <Icon name="plus" size={12} /> Add skill
+                            </button>
+                          )}
                         </div>
+
                       </div>
                     )}
 

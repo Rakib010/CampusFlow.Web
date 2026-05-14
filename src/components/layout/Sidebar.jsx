@@ -1,5 +1,7 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/useAuthStore.js';
+import useMobileNavStore from '../../stores/useMobileNavStore.js';
 import useNotifStore from '../../stores/useNotifStore.js';
 import AppLogo from '../ui/AppLogo.jsx';
 import Icon from '../ui/Icon.jsx';
@@ -108,17 +110,30 @@ export default function Sidebar() {
   const { user, logout } = useAuthStore();
   const { unreadCount } = useNotifStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  const drawerOpen = useMobileNavStore((s) => s.drawerOpen);
+  const closeDrawer = useMobileNavStore((s) => s.closeDrawer);
 
   const role = user?.role || 'ATTENDEE';
   const sections = navConfig[role] || navConfig.ATTENDEE;
 
+  const handleNav = () => {
+    closeDrawer();
+  };
+
   const handleLogout = () => {
+    closeDrawer();
     logout();
     navigate('/login');
   };
 
+  // Close drawer on route change (e.g. in-page links, browser back)
+  useEffect(() => {
+    closeDrawer();
+  }, [location.pathname, closeDrawer]);
+
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${drawerOpen ? ' is-open' : ''}`}>
       {/* Logo */}
       <div className="sidebar-logo">
         <AppLogo size="md" />
@@ -135,6 +150,7 @@ export default function Sidebar() {
                 to={item.to}
                 end={item.to === '/dashboard' || item.to === '/events' || item.to === '/users'}
                 className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
+                onClick={handleNav}
               >
                 <span className="sidebar-item-icon"><Icon name={item.icon} size={17} /></span>
                 <span>{item.label}</span>

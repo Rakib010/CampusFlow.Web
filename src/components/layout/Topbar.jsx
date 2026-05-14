@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/useAuthStore.js';
+import useMobileNavStore from '../../stores/useMobileNavStore.js';
 import useNotifStore from '../../stores/useNotifStore.js';
 import useToastStore from '../../stores/useToastStore.js';
 import Icon from '../ui/Icon.jsx';
@@ -18,6 +19,8 @@ function timeAgo(date) {
 export default function Topbar() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const toggleDrawer = useMobileNavStore((s) => s.toggleDrawer);
+  const drawerOpen = useMobileNavStore((s) => s.drawerOpen);
   const { notifications, unreadCount, isLoading, fetch, markRead, markAllRead, remove } = useNotifStore();
   const [open, setOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
@@ -87,7 +90,17 @@ export default function Topbar() {
 
   return (
     <header className="topbar">
-      <div className="topbar-left" />
+      <div className="topbar-left">
+        <button
+          type="button"
+          className="topbar-icon-btn topbar-nav-toggle"
+          onClick={toggleDrawer}
+          aria-label={drawerOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={drawerOpen}
+        >
+          <Icon name="menu" size={18} />
+        </button>
+      </div>
       <div className="topbar-right">
         <button
           ref={buttonRef}

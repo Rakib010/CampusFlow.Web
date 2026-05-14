@@ -27,7 +27,7 @@
   min-width: 0;
 }
 
-.topbar-nav-toggle {
+.topbar-icon-btn.topbar-nav-toggle {
   display: none;
 }
 
@@ -37,8 +37,8 @@
     padding: 0 14px;
   }
 
-  .topbar-nav-toggle {
-    display: inline-flex;
+  .topbar-icon-btn.topbar-nav-toggle {
+    display: flex;
   }
 }
 
